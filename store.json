@@ -1,0 +1,24 @@
+{
+  "appData": {
+    "tours": [],
+    "suppliers": [],
+    "financeData": {
+      "revenues": [],
+      "payments": {},
+      "reimbursements": []
+    }
+  },
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "$2a$10$qjjV6BKhiK3qUUuAVwE.cuyWbpzzQ5NhuwedC9TibRkXaL8NTdAq2",
+      "displayName": "管理员",
+      "role": "admin",
+      "createdAt": "2026-07-05T04:43:58.114Z"
+    }
+  ],
+  "version": 0,
+  "updatedBy": "",
+  "updatedAt": ""
+}

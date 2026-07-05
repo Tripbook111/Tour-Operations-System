@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小白部署指南 - 入境游管理系统上线</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f5f5; color: #333; line-height: 1.8; }
+  .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+  h1 { font-size: 28px; margin-bottom: 8px; color: #1a1a1a; }
+  .subtitle { color: #666; margin-bottom: 32px; font-size: 15px; }
+  
+  .progress-bar { display: flex; gap: 4px; margin-bottom: 40px; }
+  .progress-bar .step-pill { flex: 1; height: 6px; background: #ddd; border-radius: 3px; }
+  .progress-bar .step-pill.active { background: #4F46E5; }
+  .progress-bar .step-pill.done { background: #22c55e; }
+
+  .phase { background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .phase-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .phase-number { width: 40px; height: 40px; border-radius: 50%; background: #4F46E5; color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; }
+  .phase-title { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+  
+  .step { margin-bottom: 24px; padding-left: 52px; position: relative; }
+  .step:last-child { margin-bottom: 0; }
+  .step-num { position: absolute; left: 0; top: 2px; width: 28px; height: 28px; border-radius: 50%; background: #f0f0f0; color: #666; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+  .step-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #1a1a1a; }
+  .step-desc { font-size: 14px; color: #555; margin-bottom: 8px; }
+  
+  .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin: 8px 0; }
+  .alert-warning { background: #fff7ed; border-left: 4px solid #f97316; color: #9a3412; }
+  .alert-info { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; }
+  .alert-success { background: #f0fdf4; border-left: 4px solid #22c55e; color: #166534; }
+  
+  .code-block { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; margin: 8px 0; overflow-x: auto; }
+  .code-inline { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; color: #d6336c; }
+  
+  .screenshot-desc { background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 16px; margin: 8px 0; font-size: 13px; color: #666; }
+  .screenshot-desc strong { color: #333; }
+  
+  .btn-demo { display: inline-block; padding: 8px 16px; background: #4F46E5; color: white; border-radius: 6px; font-size: 13px; font-weight: 600; }
+  .btn-demo-outline { display: inline-block; padding: 8px 16px; background: white; border: 2px solid #4F46E5; color: #4F46E5; border-radius: 6px; font-size: 13px; font-weight: 600; }
+
+  .toc { background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .toc-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 6px; font-size: 14px; }
+  .toc a { color: #4F46E5; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  .divider { height: 1px; background: #eee; margin: 24px 0; }
+
+  .faq { background: white; border-radius: 16px; padding: 32px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .faq h3 { font-size: 18px; margin-bottom: 16px; }
+  .faq-item { margin-bottom: 16px; }
+  .faq-q { font-weight: 600; color: #1a1a1a; margin-bottom: 4px; font-size: 14px; }
+  .faq-a { color: #666; font-size: 14px; }
+
+  .footer { text-align: center; padding: 32px 0; color: #999; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🚀 入境游管理系统 — 上线指南</h1>
+<p class="subtitle">从零开始，5步让你的4个同事都能在线使用。全程不需要写代码。</p>
+
+<div class="toc">
+  <div class="toc-title">📑 目录（点击跳转）</div>
+  <ol>
+    <li><a href="#phase1">注册 GitHub 账号</a></li>
+    <li><a href="#phase2">安装 GitHub Desktop 并上传代码</a></li>
+    <li><a href="#phase3">注册 Render 账号</a></li>
+    <li><a href="#phase4">部署系统到 Render</a></li>
+    <li><a href="#phase5">初始化系统 & 添加同事账号</a></li>
+  </ol>
+</div>
+
+<!-- Phase 1 -->
+<div class="phase" id="phase1">
+  <div class="phase-header">
+    <div class="phase-number">1</div>
+    <div class="phase-title">注册 GitHub 账号</div>
+  </div>
+  
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-title">打开 GitHub 网站</div>
+    <div class="step-desc">在浏览器输入：<span class="code-inline">https://github.com</span></div>
+    <div class="alert alert-info">💡 GitHub 就像是一个"代码网盘"，你把系统代码放上去，后面部署的时候 Render 会自动从那里拉取。</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-title">点击 Sign up 注册</div>
+    <div class="step-desc">右上角绿色按钮 <span class="btn-demo-outline" style="font-size:12px;padding:4px 10px;">Sign up</span></div>
+    <div class="screenshot-desc">
+      填写：<br>
+      <strong>• Email</strong>：你的邮箱（常用邮箱）<br>
+      <strong>• Password</strong>：设一个密码（至少15位，或8位含数字和字母）<br>
+      <strong>• Username</strong>：起一个用户名（英文，如 <code>lily-tour</code>）<br>
+      然后点 <strong>Create account</strong>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-title">验证邮箱</div>
+    <div class="step-desc">GitHub 会给你的邮箱发一个验证码，打开邮箱，把那串数字填进去就行。</div>
+    <div class="alert alert-success">✅ 注册完成后，你会看到 GitHub 主页。不需要做任何其他操作，进入下一步。</div>
+  </div>
+</div>
+
+<!-- Phase 2 -->
+<div class="phase" id="phase2">
+  <div class="phase-header">
+    <div class="phase-number">2</div>
+    <div class="phase-title">安装 GitHub Desktop 并上传代码</div>
+  </div>
+
+  <div class="alert alert-info" style="margin-bottom:20px;">
+    💡 GitHub Desktop 是一个桌面软件，图形界面操作，比命令行简单得多。它会自动帮你安装 git。
+  </div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-title">下载 GitHub Desktop</div>
+    <div class="step-desc">在浏览器输入：<span class="code-inline">https://desktop.github.com</span></div>
+    <div class="screenshot-desc">点击页面中间的大按钮 <span class="btn-demo" style="font-size:12px;padding:4px 12px;">Download for macOS</span>（如果你是 Windows 就点 Windows 版）</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-title">安装并打开</div>
+    <div class="step-desc">下载完是一个 .dmg 文件（Mac）或 .exe 文件（Windows），双击安装。Mac 的话把 GitHub Desktop 图标拖到 Applications 文件夹里，然后打开它。</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-title">登录 GitHub 账号</div>
+    <div class="step-desc">打开 GitHub Desktop 后，会看到欢迎界面。点 <strong>"Sign in to GitHub.com"</strong></div>
+    <div class="screenshot-desc">
+      • 会弹出浏览器页面<br>
+      • 在浏览器里点 <strong>Authorize desktop</strong>（授权桌面应用）<br>
+      • 回到 GitHub Desktop，确认登录成功
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-title">创建新仓库</div>
+    <div class="step-desc">在 GitHub Desktop 左上角，点 <strong>File → New repository...</strong>（或按快捷键 Cmd+N）</div>
+    <div class="screenshot-desc">
+      <strong>填写以下信息：</strong><br>
+      • <strong>Name</strong>：填 <code>tour-system</code><br>
+      • <strong>Local path</strong>：点右边的 <strong>Choose...</strong> 按钮，选择以下路径：<br>
+      <div class="code-block">/Users/lily/Workbuddy/2026-07-02-11-15-10/tour-system-cloud</div>
+      <div class="alert alert-warning">⚠️ <strong>重要</strong>：不要勾选 "Initialize this repository with a README"，因为目录里已经有文件了！</div>
+      • <strong>Git ignore</strong>：留空（目录里已有 .gitignore 文件）<br>
+      • <strong>License</strong>：留空<br>
+      • 点 <strong>Create repository</strong>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-title">提交代码（Commit）</div>
+    <div class="step-desc">创建仓库后，GitHub Desktop 会显示所有文件。你需要在左下角做一次"提交"：</div>
+    <div class="screenshot-desc">
+      • 在左下角 <strong>Summary</strong> 框里填：<code>初始提交</code><br>
+      • 点蓝色的 <span class="btn-demo" style="font-size:12px;padding:4px 12px;">Commit to main</span> 按钮<br>
+      • 等几秒钟，左边文件列表会变空（说明已提交成功）
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-title">发布到 GitHub（Push）</div>
+    <div class="step-desc">提交后，顶部会出现一个 <strong>"Publish repository"</strong> 按钮，点它！</div>
+    <div class="screenshot-desc">
+      • 弹出窗口，保持 <strong>"Keep this code private"</strong> 勾选（你的代码不需要公开）<br>
+      • 点 <span class="btn-demo" style="font-size:12px;padding:4px 12px;">Publish repository</span><br>
+      • 等待上传完成（几秒钟）
+    </div>
+    <div class="alert alert-success">
+      ✅ <strong>完成后</strong>：打开浏览器访问 <code>https://github.com/你的用户名/tour-system</code>，能看到代码文件就说明上传成功了！
+    </div>
+  </div>
+</div>
+
+<!-- Phase 3 -->
+<div class="phase" id="phase3">
+  <div class="phase-header">
+    <div class="phase-number">3</div>
+    <div class="phase-title">注册 Render 账号</div>
+  </div>
+
+  <div class="alert alert-info" style="margin-bottom:20px;">
+    💡 Render 是一个免费的服务器托管平台。你把 GitHub 上的代码告诉它，它会帮你运行，给你一个公网网址，别人就能访问了。
+  </div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-title">打开 Render 网站</div>
+    <div class="step-desc">在浏览器输入：<span class="code-inline">https://render.com</span></div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-title">用 GitHub 账号登录</div>
+    <div class="step-desc">点右上角 <strong>"Sign Up"</strong>，然后点 <strong>"GitHub"</strong> 图标登录（不用重新注册）</div>
+    <div class="screenshot-desc">
+      • 会跳转到 GitHub 授权页面<br>
+      • 点 <strong>Authorize Render</strong>（授权 Render 访问你的 GitHub）<br>
+      • 回到 Render，填写一些基本信息（名字、邮箱等）<br>
+      • 不需要绑卡！免费版可以直接用
+    </div>
+    <div class="alert alert-success">✅ 注册完成后，你会看到 Render 的 Dashboard（控制面板）。</div>
+  </div>
+</div>
+
+<!-- Phase 4 -->
+<div class="phase" id="phase4">
+  <div class="phase-header">
+    <div class="phase-number">4</div>
+    <div class="phase-title">部署系统到 Render</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-title">创建新的 Web Service</div>
+    <div class="step-desc">在 Render Dashboard 右上角，点 <strong>"New +"</strong> → 选 <strong>"Web Service"</strong></div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-title">连接 GitHub 仓库</div>
+    <div class="step-desc">页面会显示你的 GitHub 仓库列表，找到 <strong>tour-system</strong>，点右边的 <strong>"Connect"</strong></div>
+    <div class="alert alert-warning">⚠️ 如果看不到仓库，点 "Configure account" 链接，授权 Render 访问你的仓库。</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-title">填写部署配置</div>
+    <div class="step-desc">连接后进入配置页面，按以下内容填写：</div>
+    <div class="screenshot-desc">
+      <strong>• Name</strong>：<code>tour-system</code>（随意取，这会出现在网址里）<br>
+      <strong>• Region</strong>：选 <code>Singapore</code>（离中国最近）或 <code>Oregon</code><br>
+      <strong>• Branch</strong>：<code>main</code>（默认就好）<br>
+      <strong>• Root Directory</strong>：留空<br>
+      <strong>• Runtime</strong>：选 <code>Node</code><br>
+      <strong>• Build Command</strong>：<code>npm install</code><br>
+      <strong>• Start Command</strong>：<code>node server.js</code><br>
+      <strong>• Instance Type</strong>：选 <code>Free</code>（免费版）
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-title">添加环境变量（重要！）</div>
+    <div class="step-desc">在配置页面往下滚动，找到 <strong>"Environment Variables"</strong> 区域，添加一项：</div>
+    <div class="screenshot-desc">
+      <strong>Key</strong>：<code>JWT_SECRET</code><br>
+      <strong>Value</strong>：填一串随机字符，比如 <code>toursystem2026secretkey9988</code><br>
+      <div class="alert alert-info">💡 这个密钥用于加密登录信息。不设的话系统也能用，但服务器重启后所有人需要重新登录。</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-title">点击部署！</div>
+    <div class="step-desc">滑到页面最底部，点蓝色大按钮 <span class="btn-demo" style="font-size:12px;padding:4px 12px;">Create Web Service</span></div>
+    <div class="alert alert-info">
+      💡 部署需要 2-3 分钟。你会看到一个日志页面在滚动，等它出现 <code>Server running on port 3000</code> 就说明成功了！
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-title">获取公网网址</div>
+    <div class="step-desc">部署完成后，页面左上角会显示你的网址，类似：</div>
+    <div class="code-block">https://tour-system-xxxx.onrender.com</div>
+    <div class="alert alert-success">
+      ✅ <strong>就是这个网址！</strong>复制它，发给4个同事，他们打开就能用了！
+    </div>
+  </div>
+</div>
+
+<!-- Phase 5 -->
+<div class="phase" id="phase5">
+  <div class="phase-header">
+    <div class="phase-number">5</div>
+    <div class="phase-title">初始化系统 & 添加同事账号</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-title">用管理员账号登录</div>
+    <div class="step-desc">打开你刚才拿到的公网网址，用默认管理员账号登录：</div>
+    <div class="code-block">用户名：admin
+密码：admin123</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-title">注入演示数据（可选）</div>
+    <div class="step-desc">登录后，点左侧菜单 <strong>「数据管理」</strong>，找到 <strong>「注入演示数据」</strong> 按钮，点击它。</div>
+    <div class="alert alert-info">💡 这会创建4个示例旅行团和一些报账数据，方便你先看看效果。正式使用时可以删除这些演示数据。</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-title">添加同事账号</div>
+    <div class="step-desc">在「数据管理」页面，找到 <strong>「用户管理」</strong> 区域，点 <strong>「添加用户」</strong>：</div>
+    <div class="screenshot-desc">
+      为每个同事创建账号：<br>
+      • <strong>用户名</strong>：英文，如 <code>zhangsan</code><br>
+      • <strong>显示名</strong>：中文，如 <code>张三</code><br>
+      • <strong>密码</strong>：至少6位<br>
+      • <strong>角色</strong>：选 <code>普通成员</code>（管理员才能管理用户）<br>
+      点 <strong>创建</strong>
+    </div>
+    <div class="alert alert-info">💡 创建4个同事的账号后，把各自的用户名和密码分别告诉他们。</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-title">修改管理员密码（重要！）</div>
+    <div class="step-desc">在「数据管理」→ 找到 <strong>「修改密码」</strong>，把默认的 admin123 改成一个你自己的密码。</div>
+    <div class="alert alert-warning">⚠️ 一定要改！不然任何人都能用 admin123 登录管理员账号。</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-title">告诉同事们怎么用</div>
+    <div class="step-desc">把以下信息发给每个同事：</div>
+    <div class="code-block">系统网址：https://tour-system-xxxx.onrender.com
+（替换成你实际的网址）
+
+你的账号：
+  用户名：zhangsan
+  密码：xxxxxx
+
+打开网址 → 输入用户名密码 → 登录就能用了！
+数据是自动同步的，你改了别人15秒内就能看到。</div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div class="faq">
+  <h3>❓ 常见问题</h3>
+  
+  <div class="faq-item">
+    <div class="faq-q">Q: Render 免费版会丢数据吗？</div>
+    <div class="faq-a">A: 有可能。免费版如果长时间不访问，服务器会休眠，重启后文件数据可能丢失。建议每天在「数据管理」→「导出全部数据」备份一次。如果数据重要，可以考虑升级到 Render Starter 计划（$7/月），加上 Persistent Disk 就不会丢了。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">Q: 同事打开网址后要等很久？</div>
+    <div class="faq-a">A: Render 免费版15分钟无访问会休眠，第一次打开需要等30秒左右唤醒。唤醒后就正常了。可以装一个定时访问工具（如 UptimeRobot）每5分钟ping一次来防止休眠。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">Q: 以后代码更新了怎么办？</div>
+    <div class="faq-a">A: 在 GitHub Desktop 里修改文件 → 填写 Summary → Commit → 点 "Push origin"。Render 会自动检测到更新，自动重新部署。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">Q: 4个人同时操作会冲突吗？</div>
+    <div class="faq-a">A: 系统有版本冲突检测。如果两人同时修改，后保存的人会看到提示"数据已被其他人更新"，点击刷新获取最新数据后再保存即可。正常使用不会丢数据。</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">Q: GitHub Desktop 里找不到目录怎么办？</div>
+    <div class="faq-a">A: 确保路径是对的。在 Mac 上，可以用 Finder → 前往 → 前往文件夹，粘贴路径确认目录存在。如果 Workbuddy 目录看不到，可能需要在 Finder 设置里显示隐藏文件（Cmd+Shift+.）。</div>
+  </div>
+</div>
+
+<div class="footer">
+  入境游管理系统 · 多人协作版 · 2026
+</div>
+
+</div>
+</body>
+</html>
