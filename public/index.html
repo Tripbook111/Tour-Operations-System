@@ -1,1 +1,3226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>入境游落地执行管理系统</title>
+<style>
+  :root {
+    --primary: #1A4D8F;
+    --primary-light: #E6F1FB;
+    --primary-hover: #2E6CB5;
+    --primary-bg: #F0F6FC;
+    --success: #1D9E75;
+    --success-light: #E1F5EE;
+    --warning: #BA7517;
+    --warning-light: #FAEEDA;
+    --danger: #A32D2D;
+    --danger-light: #FCEBEB;
+    --gray-50: #F8F7F4;
+    --gray-100: #F1EFE8;
+    --gray-200: #D3D1C7;
+    --gray-400: #888780;
+    --gray-600: #5F5E5A;
+    --gray-800: #444441;
+    --gray-900: #2C2C2A;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+  }
 
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  /* ===== Layout ===== */
+  .app-layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 220px; background: white;
+    border-right: 1px solid var(--gray-200);
+    padding: 16px 0;
+    flex-shrink: 0;
+    display: flex; flex-direction: column;
+  }
+  .sidebar-logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--gray-100);
+    margin-bottom: 16px;
+  }
+  .sidebar-logo h1 { font-size: 16px; font-weight: 600; color: var(--primary); }
+  .sidebar-logo .sub { font-size: 11px; color: var(--gray-600); margin-top: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px;
+    color: var(--gray-600);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: var(--gray-50); color: var(--primary); }
+  .nav-item.active {
+    background: var(--primary-bg);
+    color: var(--primary);
+    border-left-color: var(--primary);
+    font-weight: 500;
+  }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-item .badge {
+    margin-left: auto; background: var(--danger); color: white;
+    padding: 1px 6px; border-radius: 10px; font-size: 11px;
+  }
+
+  .main-content { flex: 1; padding: 24px 32px; overflow-y: auto; max-height: 100vh; }
+  .page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-header h2 { font-size: 22px; font-weight: 500; color: var(--gray-900); }
+  .page-header .actions { display: flex; gap: 8px; }
+
+  /* ===== Cards ===== */
+  .card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-200);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 500; color: var(--primary);
+    margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  /* ===== Buttons ===== */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px;
+    border: none; border-radius: var(--radius);
+    font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { opacity: 0.9; }
+  .btn-warning { background: var(--warning); color: white; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-danger:hover { opacity: 0.9; }
+  .btn-outline {
+    background: white; color: var(--primary);
+    border: 1px solid var(--primary);
+  }
+  .btn-outline:hover { background: var(--primary-light); }
+  .btn-ghost { background: transparent; color: var(--gray-600); }
+  .btn-ghost:hover { background: var(--gray-100); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-lg { padding: 12px 24px; font-size: 15px; }
+
+  /* ===== Forms ===== */
+  .form-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-bottom: 12px;
+  }
+  .form-grid .full { grid-column: 1 / -1; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label {
+    font-size: 12px; font-weight: 500; color: var(--gray-600);
+  }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 8px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 14px; font-family: inherit;
+    transition: border-color 0.2s;
+    background: white;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+
+  /* ===== Tables ===== */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    background: var(--primary);
+    color: white;
+    padding: 10px 8px;
+    font-weight: 500;
+    font-size: 12px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .data-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--gray-200);
+    text-align: center;
+    vertical-align: middle;
+  }
+  .data-table tr:hover { background: var(--gray-50); }
+  .data-table .text-left { text-align: left; }
+
+  /* ===== Badges ===== */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-pending { background: var(--danger-light); color: var(--danger); }
+  .badge-progress { background: var(--warning-light); color: var(--warning); }
+  .badge-done { background: var(--success-light); color: var(--success); }
+  .badge-primary { background: var(--primary-light); color: var(--primary); }
+  .badge-gray { background: var(--gray-100); color: var(--gray-600); }
+
+  /* ===== Dashboard Stats ===== */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .stat-card .label { font-size: 12px; color: var(--gray-600); margin-bottom: 8px; }
+  .stat-card .num { font-size: 32px; font-weight: 500; line-height: 1.2; }
+  .stat-card .sub { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+  .stat-card .icon { position: absolute; top: 16px; right: 16px; font-size: 24px; opacity: 0.3; }
+  .stat-card.stat-primary .num { color: var(--primary); }
+  .stat-card.stat-danger .num { color: var(--danger); }
+  .stat-card.stat-warning .num { color: var(--warning); }
+  .stat-card.stat-success .num { color: var(--success); }
+
+  /* ===== Kanban (Tour Stages) ===== */
+  .kanban-board {
+    display: flex; gap: 12px; overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .kanban-column {
+    flex: 0 0 280px;
+    background: var(--gray-50);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+    min-height: 400px;
+  }
+  .kanban-column-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 4px 8px;
+  }
+  .kanban-column-title {
+    font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .kanban-column-count {
+    background: white; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; color: var(--gray-600);
+  }
+  .kanban-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border-left: 3px solid var(--gray-200);
+    transition: all 0.15s;
+  }
+  .kanban-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+  .kanban-card.urgent { border-left-color: var(--danger); }
+  .kanban-card.warning { border-left-color: var(--warning); }
+  .kanban-card.normal { border-left-color: var(--primary); }
+  .kanban-card.done { border-left-color: var(--success); opacity: 0.7; }
+  .kanban-card .card-name { font-weight: 500; margin-bottom: 4px; }
+  .kanban-card .card-meta { font-size: 11px; color: var(--gray-600); }
+  .kanban-card .card-progress {
+    height: 4px; background: var(--gray-100); border-radius: 2px;
+    margin-top: 8px; overflow: hidden;
+  }
+  .kanban-card .card-progress-bar {
+    height: 100%; background: var(--primary); transition: width 0.3s;
+  }
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; align-items: flex-start; justify-content: center;
+    z-index: 100;
+    padding: 40px 20px;
+    overflow-y: auto;
+  }
+  .modal {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    max-width: 800px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+  }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .modal-header h3 { font-size: 18px; font-weight: 500; color: var(--primary); }
+  .modal-close {
+    background: none; border: none; font-size: 24px; cursor: pointer;
+    color: var(--gray-600);
+  }
+
+  /* ===== Empty state ===== */
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--gray-400);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state .text { font-size: 14px; margin-bottom: 16px; }
+
+  /* ===== Tabs ===== */
+  .tabs {
+    display: flex; gap: 0; margin-bottom: 16px;
+    border-bottom: 2px solid var(--gray-200);
+  }
+  .tab {
+    padding: 8px 20px;
+    font-size: 14px; font-weight: 500;
+    color: var(--gray-600);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+  }
+  .tab:hover { color: var(--primary); }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed; top: 20px; right: 20px;
+    padding: 12px 20px; border-radius: var(--radius);
+    font-size: 14px; z-index: 200;
+    animation: slideIn 0.3s ease;
+    box-shadow: var(--shadow-lg);
+    color: white;
+  }
+  .toast-success { background: var(--success); }
+  .toast-warning { background: var(--warning); }
+  .toast-error { background: var(--danger); }
+  @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } }
+
+  /* ===== Service type selector ===== */
+  .service-types {
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    gap: 8px; margin-bottom: 16px;
+  }
+  .service-type-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 12px 6px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    cursor: pointer;
+    background: white;
+    font-size: 11px; font-weight: 500;
+    color: var(--gray-600);
+  }
+  .service-type-btn:hover { border-color: var(--primary); }
+  .service-type-btn.active {
+    border-color: var(--primary); background: var(--primary-light);
+    color: var(--primary);
+  }
+  .service-type-btn .type-icon { font-size: 20px; }
+
+  /* ===== Search bar ===== */
+  .search-bar {
+    display: flex; gap: 8px; margin-bottom: 16px;
+  }
+  .search-bar input {
+    flex: 1; padding: 10px 16px;
+    border: 1px solid var(--gray-200); border-radius: var(--radius);
+    font-size: 14px;
+  }
+
+  /* ===== Charts ===== */
+  .chart-container {
+    height: 240px; display: flex; align-items: flex-end; gap: 8px;
+    padding: 20px 0;
+  }
+  .chart-bar-group {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .chart-bar {
+    width: 100%; max-width: 60px;
+    background: var(--primary); border-radius: 4px 4px 0 0;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .chart-bar:hover { background: var(--primary-hover); }
+  .chart-bar .val {
+    position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; color: var(--gray-600);
+  }
+  .chart-label { font-size: 11px; color: var(--gray-600); }
+
+  /* ===== Print ===== */
+  @media print {
+    .sidebar, .no-print { display: none; }
+    .main-content { padding: 0; max-height: none; }
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 1024px) {
+    .sidebar { width: 180px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .service-types { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .app-layout { flex-direction: column; }
+    .sidebar { width: 100%; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ===== Login Screen ===== */
+  .login-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, #1A4D8F 0%, #2E6CB5 50%, #3a7dd5 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .login-card {
+    background: white; border-radius: 16px; padding: 40px 36px;
+    width: 380px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-card h1 { font-size: 22px; color: var(--primary); margin-bottom: 4px; }
+  .login-card .login-sub { font-size: 13px; color: var(--gray-600); margin-bottom: 28px; }
+  .login-card .form-group { margin-bottom: 16px; }
+  .login-card label { font-size: 13px; color: var(--gray-600); display: block; margin-bottom: 6px; }
+  .login-card input {
+    width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200);
+    border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.15s;
+  }
+  .login-card input:focus { border-color: var(--primary); }
+  .login-card .btn-login {
+    width: 100%; padding: 12px; background: var(--primary); color: white;
+    border: none; border-radius: 8px; font-size: 15px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s; margin-top: 8px;
+  }
+  .login-card .btn-login:hover { background: var(--primary-hover); }
+  .login-card .login-error {
+    color: var(--danger); font-size: 13px; margin-top: 12px; text-align: center;
+    display: none;
+  }
+  .login-card .login-hint {
+    margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--gray-100);
+    font-size: 12px; color: var(--gray-400); text-align: center;
+  }
+
+  /* ===== User Info in Sidebar ===== */
+  .sidebar-user {
+    margin-top: auto; padding: 12px 20px; border-top: 1px solid var(--gray-100);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sidebar-user .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--primary); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 500; flex-shrink: 0;
+  }
+  .sidebar-user .user-info { flex: 1; min-width: 0; }
+  .sidebar-user .user-name { font-size: 13px; font-weight: 500; color: var(--gray-800); }
+  .sidebar-user .user-role { font-size: 11px; color: var(--gray-400); }
+  .sidebar-user .btn-logout {
+    background: none; border: none; cursor: pointer;
+    color: var(--gray-400); font-size: 16px; padding: 4px;
+  }
+  .sidebar-user .btn-logout:hover { color: var(--danger); }
+
+  /* ===== Sync Status ===== */
+  .sync-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--gray-400); padding: 4px 8px;
+  }
+  .sync-status .sync-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+  }
+  .sync-status.syncing .sync-dot { background: var(--warning); animation: pulse 1s infinite; }
+  .sync-status.error .sync-dot { background: var(--danger); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* ===== User Management ===== */
+  .user-table { width: 100%; border-collapse: collapse; }
+  .user-table th { text-align: left; padding: 10px 12px; font-size: 12px; color: var(--gray-600); border-bottom: 1px solid var(--gray-200); }
+  .user-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--gray-100); }
+  .user-table .role-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+  .user-table .role-badge.admin { background: var(--primary-light); color: var(--primary); }
+  .user-table .role-badge.user { background: var(--gray-100); color: var(--gray-600); }
+
+  /* ===== Conflict Warning ===== */
+  .conflict-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9000;
+    background: var(--warning); color: white; padding: 12px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Login Screen ===== -->
+<div class="login-overlay" id="loginScreen">
+  <div class="login-card">
+    <h1>入境游管理系统</h1>
+    <div class="login-sub">多人协作版 · 请登录</div>
+    <div class="form-group">
+      <label>用户名</label>
+      <input id="loginUsername" placeholder="请输入用户名" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input id="loginPassword" type="password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()">登 录</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-hint">初始管理员账号：admin / admin123</div>
+  </div>
+</div>
+
+<!-- ===== Conflict Warning Banner ===== -->
+<div class="conflict-banner" id="conflictBanner" style="display:none;">
+  <span id="conflictMsg"></span>
+  <button class="btn btn-outline" style="color:white;border-color:white;" onclick="reloadFromServer()">点击刷新最新数据</button>
+</div>
+
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>入境游管理系统</h1>
+      <div class="sub">v3.0 · 多人协作版</div>
+    </div>
+    <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">
+      <span class="icon">&#128202;</span><span>仪表盘</span>
+    </div>
+    <div class="nav-item" data-page="kanban" onclick="switchPage('kanban')">
+      <span class="icon">&#128203;</span><span>团情看板</span>
+      <span class="badge" id="navActiveCount" style="display:none">0</span>
+    </div>
+    <div class="nav-item" data-page="urgent" onclick="switchPage('urgent')">
+      <span class="icon">&#9888;</span><span>紧急任务</span>
+      <span class="badge" id="navUrgentCount" style="display:none">0</span>
+    </div>
+    <div class="nav-item" data-page="tours" onclick="switchPage('tours')">
+      <span class="icon">&#128197;</span><span>所有团</span>
+    </div>
+    <div class="nav-item" data-page="finance" onclick="switchPage('finance')">
+      <span class="icon">&#128181;</span><span>报账中心</span>
+    </div>
+    <div class="nav-item" data-page="suppliers" onclick="switchPage('suppliers')">
+      <span class="icon">&#128176;</span><span>供应商库</span>
+    </div>
+    <div class="nav-item" data-page="settings" onclick="switchPage('settings')">
+      <span class="icon">&#9881;</span><span>数据管理</span>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="sync-status" id="syncStatus">
+      <span class="sync-dot"></span>
+      <span id="syncText">已同步</span>
+    </div>
+    <div class="sidebar-user" id="sidebarUser" style="display:none;">
+      <div class="avatar" id="userAvatar">A</div>
+      <div class="user-info">
+        <div class="user-name" id="userName">用户</div>
+        <div class="user-role" id="userRole">普通成员</div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()" title="退出登录">&#8634;</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ===== Dashboard Page ===== -->
+    <div id="page-dashboard" class="page">
+      <div class="page-header">
+        <h2>仪表盘</h2>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="openNewTourModal()">+ 新建团</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-primary">
+          <div class="icon">&#128197;</div>
+          <div class="label">在管团数</div>
+          <div class="num" id="statActiveTours">0</div>
+          <div class="sub" id="statActiveToursSub">本月出团</div>
+        </div>
+        <div class="stat-card stat-danger">
+          <div class="icon">&#9888;</div>
+          <div class="label">紧急任务</div>
+          <div class="num" id="statUrgentTasks">0</div>
+          <div class="sub">T-7 内未完成</div>
+        </div>
+        <div class="stat-card stat-warning">
+          <div class="icon">&#9203;</div>
+          <div class="label">本周出团</div>
+          <div class="num" id="statWeekTours">0</div>
+          <div class="sub">需要重点跟进</div>
+        </div>
+        <div class="stat-card stat-success">
+          <div class="icon">&#128181;</div>
+          <div class="label">本月营收</div>
+          <div class="num" id="statMonthRevenue">¥0</div>
+          <div class="sub" id="statMonthRevenueSub">已完成 + 在管</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;">
+        <div class="card">
+          <div class="card-title">未来30天出团日历</div>
+          <div class="chart-container" id="calendarChart"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">阶段分布</div>
+          <div id="stageDistribution"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">
+          最近活动
+          <button class="btn btn-ghost btn-sm" onclick="switchPage('tours')">查看全部 →</button>
+        </div>
+        <div id="recentActivity"></div>
+      </div>
+    </div>
+
+    <!-- ===== Kanban Page ===== -->
+    <div id="page-kanban" class="page" style="display:none;">
+      <div class="page-header">
+        <h2>团情看板</h2>
+        <div class="actions">
+          <select id="kanbanFilter" onchange="renderKanban()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--gray-200);">
+            <option value="all">全部</option>
+            <option value="active">在管</option>
+            <option value="urgent">紧急</option>
+            <option value="completed">已完成</option>
+          </select>
+          <button class="btn btn-primary" onclick="openNewTourModal()">+ 新建团</button>
+        </div>
+      </div>
+
+      <div class="kanban-board" id="kanbanBoard"></div>
+    </div>
+
+    <!-- ===== Urgent Tasks Page ===== -->
+    <div id="page-urgent" class="page" style="display:none;">
+      <div class="page-header">
+        <h2>紧急任务清单</h2>
+        <div class="actions">
+          <select id="urgentFilter" onchange="renderUrgentTasks()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--gray-200);">
+            <option value="all">全部</option>
+            <option value="today">今天到期</option>
+            <option value="week">本周到期</option>
+            <option value="overdue">已逾期</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="urgentTasksList"></div>
+      </div>
+    </div>
+
+    <!-- ===== All Tours Page ===== -->
+    <div id="page-tours" class="page" style="display:none;">
+      <div class="page-header">
+        <h2>所有团</h2>
+        <div class="actions">
+          <button class="btn btn-outline btn-sm" onclick="exportAllTours()">导出全部</button>
+          <button class="btn btn-primary" onclick="openNewTourModal()">+ 新建团</button>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <input type="text" id="tourSearch" placeholder="搜索团名/客户名/路线..." oninput="renderToursList()" />
+      </div>
+
+      <div class="card">
+        <table class="data-table" id="toursTable">
+          <thead>
+            <tr>
+              <th>团名</th>
+              <th>客户</th>
+              <th>人数</th>
+              <th>路线</th>
+              <th>出团日期</th>
+              <th>倒计时</th>
+              <th>状态</th>
+              <th>完成度</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="toursTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== Finance Page ===== -->
+    <div id="page-finance" class="page" style="display:none;">
+      <div class="page-header">
+        <h2>报账中心</h2>
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="exportFinanceReport()">📊 导出报表</button>
+        </div>
+      </div>
+
+      <!-- 4个核心指标 -->
+      <div class="stats-grid">
+        <div class="stat-card stat-success">
+          <div class="icon">&#128176;</div>
+          <div class="label">本月营收</div>
+          <div class="num" id="finMonthRevenue">¥0</div>
+          <div class="sub" id="finMonthRevenueSub">本月已回款</div>
+        </div>
+        <div class="stat-card stat-warning">
+          <div class="icon">&#128181;</div>
+          <div class="label">本月成本</div>
+          <div class="num" id="finMonthCost">¥0</div>
+          <div class="sub" id="finMonthCostSub">服务项合计</div>
+        </div>
+        <div class="stat-card stat-primary">
+          <div class="icon">&#128200;</div>
+          <div class="label">本月毛利</div>
+          <div class="num" id="finMonthProfit">¥0</div>
+          <div class="sub" id="finMonthProfitSub">毛利率 0%</div>
+        </div>
+        <div class="stat-card stat-danger">
+          <div class="icon">&#9888;</div>
+          <div class="label">待付供应商</div>
+          <div class="num" id="finPendingPay">¥0</div>
+          <div class="sub" id="finPendingPaySub">0 笔</div>
+        </div>
+      </div>
+
+      <!-- 子Tab -->
+      <div class="tabs">
+        <div class="tab active" data-fin-tab="overview" onclick="switchFinanceTab('overview')">收入与成本概览</div>
+        <div class="tab" data-fin-tab="reimburse" onclick="switchFinanceTab('reimburse')">完团报销</div>
+      </div>
+
+      <!-- ===== 收入与成本概览 ===== -->
+      <div id="finPane-overview" class="fin-pane">
+        <!-- 收入管理 -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>收入记录</span>
+            <button class="btn btn-primary" onclick="openRevenueModal()">+ 录入收入</button>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>团名</th>
+                <th>客户</th>
+                <th>项目</th>
+                <th>金额</th>
+                <th>到账日期</th>
+                <th>收款方式</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="finRevenueTable"></tbody>
+          </table>
+        </div>
+
+        <!-- 成本概览（按类别） -->
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>成本概览（按类别）</span>
+            <div style="display:flex;gap:12px;align-items:center;">
+              <label style="font-size:13px;color:var(--gray-600);">按团：</label>
+              <select id="finCostTourFilter" onchange="renderFinanceCost()" style="padding:6px 12px;border:1px solid var(--gray-200);border-radius:6px;">
+                <option value="">全部团</option>
+              </select>
+            </div>
+          </div>
+          <p style="color:var(--gray-600);font-size:13px;margin-bottom:12px;">
+            成本数据自动从各团"服务项"中提取，按类别汇总。供应商付款状态可单独标记。
+          </p>
+          <!-- 成本类别卡片 -->
+          <div id="finCostCategories" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:16px;"></div>
+          <!-- 成本明细表 -->
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>团名</th>
+                <th>成本类别</th>
+                <th>项目名称</th>
+                <th>日期</th>
+                <th>供应商</th>
+                <th>金额</th>
+                <th>付款状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="finCostTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== 完团报销 ===== -->
+      <div id="finPane-reimburse" class="fin-pane" style="display:none;">
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>报销申请记录</span>
+            <button class="btn btn-primary" onclick="openReimburseModal()">+ 申请报销</button>
+          </div>
+          <p style="color:var(--gray-600);font-size:13px;margin-bottom:12px;">
+            选择已完团的团组，系统自动汇总该团所有成本项，生成报销申请单。支持审核状态追踪。
+          </p>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>报销单号</th>
+                <th>团名</th>
+                <th>申请人</th>
+                <th>申请日期</th>
+                <th>报销金额</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="finReimburseTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Suppliers Page ===== -->
+    <div id="page-suppliers" class="page" style="display:none;">
+      <div class="page-header">
+        <h2>供应商库</h2>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="openNewSupplierModal()">+ 新增供应商</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" data-supplier-tab="hotel" onclick="switchSupplierTab('hotel')">酒店</div>
+        <div class="tab" data-supplier-tab="car" onclick="switchSupplierTab('car')">包车</div>
+        <div class="tab" data-supplier-tab="guide" onclick="switchSupplierTab('guide')">导游</div>
+        <div class="tab" data-supplier-tab="ticket" onclick="switchSupplierTab('ticket')">景点</div>
+      </div>
+
+      <div class="card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>城市/路线</th>
+              <th>联系方式</th>
+              <th>价格参考</th>
+              <th>使用次数</th>
+              <th>备注</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="suppliersTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== Settings Page ===== -->
+    <div id="page-settings" class="page" style="display:none;">
+      <div class="page-header">
+        <h2>数据管理</h2>
+        <div class="sync-status" style="font-size:12px;">
+          <span class="sync-dot" style="background:var(--success);"></span>
+          <span id="lastSyncTime">--</span>
+        </div>
+      </div>
+
+      <div class="card" id="userMgmtCard" style="display:none;">
+        <div class="card-title">
+          <span>用户管理</span>
+          <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">+ 添加用户</button>
+        </div>
+        <p style="color:var(--gray-600);font-size:13px;margin-bottom:16px;">
+          管理团队成员账号。管理员可以添加/删除用户，普通成员只能查看和操作系统数据。
+        </p>
+        <table class="user-table">
+          <thead>
+            <tr><th>用户名</th><th>姓名</th><th>角色</th><th>创建时间</th><th>操作</th></tr>
+          </thead>
+          <tbody id="userTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">修改密码</div>
+        <div class="form-grid" style="max-width:500px;">
+          <div class="form-group">
+            <label>原密码</label>
+            <input id="oldPassword" type="password" placeholder="输入当前密码">
+          </div>
+          <div class="form-group">
+            <label>新密码</label>
+            <input id="newPassword" type="password" placeholder="输入新密码">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="changePassword()">修改密码</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">数据备份与恢复</div>
+        <p style="color:var(--gray-600);font-size:13px;margin-bottom:16px;">
+          数据已存储在云端服务器，所有团队成员共享。定期导出备份可防止意外丢失。
+        </p>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="exportAllData()">导出全部数据</button>
+          <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">导入数据</button>
+          <button class="btn btn-outline" id="seedDemoBtn" style="display:none;" onclick="seedDemoData()">注入演示数据</button>
+          <input type="file" id="importFile" accept=".json" style="display:none" onchange="importAllData(event)" />
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">数据统计</div>
+        <div id="dataStats"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">危险操作</div>
+        <p style="color:var(--danger);font-size:13px;margin-bottom:12px;">
+          以下操作不可恢复，请谨慎使用。
+        </p>
+        <div class="btn-group">
+          <button class="btn btn-danger" onclick="clearAllData()">清空所有数据</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== New Tour Modal ===== -->
+<div class="modal-overlay" id="newTourModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="tourModalTitle">新建团</h3>
+      <button class="modal-close" onclick="closeModal('newTourModal')">&times;</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-step="1" onclick="switchStep(1)">① 团组信息</div>
+      <div class="tab" data-step="2" onclick="switchStep(2)">② 添加服务</div>
+      <div class="tab" data-step="3" onclick="switchStep(3)">③ 执行清单</div>
+    </div>
+
+    <!-- Step 1: 团组信息 -->
+    <div id="step1" class="step-content">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>团组名称 *</label>
+          <input id="tourName" placeholder="如：LeAnn Wong 团" />
+        </div>
+        <div class="form-group">
+          <label>客户名称 *</label>
+          <input id="clientName" placeholder="如：LeAnn Wong" />
+        </div>
+        <div class="form-group">
+          <label>团队人数</label>
+          <input id="groupSize" placeholder="如：4人（2成人+2儿童）" />
+        </div>
+        <div class="form-group">
+          <label>负责计调</label>
+          <input id="operator" placeholder="如：张三" />
+        </div>
+        <div class="form-group">
+          <label>服务开始日期 *</label>
+          <input id="startDate" type="date" />
+        </div>
+        <div class="form-group">
+          <label>服务结束日期 *</label>
+          <input id="endDate" type="date" />
+        </div>
+        <div class="form-group full">
+          <label>服务路线</label>
+          <input id="routeInfo" placeholder="如：重庆 → 成都 → 福建厦门" />
+        </div>
+        <div class="form-group">
+          <label>订单总额 (¥)</label>
+          <input id="totalAmount" type="number" placeholder="如：4002" />
+        </div>
+        <div class="form-group">
+          <label>已收定金 (¥)</label>
+          <input id="depositAmount" type="number" placeholder="如：800" />
+        </div>
+        <div class="form-group full">
+          <label>特殊需求 / 备注</label>
+          <textarea id="specialNotes" placeholder="如：含2名儿童、外籍客户需英语沟通、饮食禁忌等"></textarea>
+        </div>
+      </div>
+
+      <div style="text-align:right;margin-top:16px;">
+        <button class="btn btn-primary" onclick="goToStep(2)">下一步：添加服务 →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: 添加服务 -->
+    <div id="step2" class="step-content" style="display:none;">
+      <p style="color:var(--gray-600);font-size:12px;margin-bottom:12px;">
+        选择服务类型，填写详情后点击添加。系统会自动生成对应的倒排检查项。
+      </p>
+
+      <div class="service-types" id="serviceTypes">
+        <div class="service-type-btn" data-type="hotel" onclick="selectServiceType(this)">
+          <span class="type-icon">&#127976;</span><span>酒店</span>
+        </div>
+        <div class="service-type-btn" data-type="train" onclick="selectServiceType(this)">
+          <span class="type-icon">&#128644;</span><span>高铁</span>
+        </div>
+        <div class="service-type-btn" data-type="flight" onclick="selectServiceType(this)">
+          <span class="type-icon">&#128747;</span><span>机票</span>
+        </div>
+        <div class="service-type-btn" data-type="car" onclick="selectServiceType(this)">
+          <span class="type-icon">&#128661;</span><span>包车</span>
+        </div>
+        <div class="service-type-btn" data-type="guide" onclick="selectServiceType(this)">
+          <span class="type-icon">&#128483;</span><span>导游</span>
+        </div>
+        <div class="service-type-btn" data-type="ticket" onclick="selectServiceType(this)">
+          <span class="type-icon">&#127915;</span><span>门票</span>
+        </div>
+      </div>
+
+      <div id="serviceForm" style="display:none;">
+        <div class="form-grid" id="dynamicFields"></div>
+        <div style="margin-top:12px;text-align:right;">
+          <button class="btn btn-primary" onclick="addServiceItem()">添加到清单</button>
+        </div>
+      </div>
+
+      <div id="addedServicesList" style="margin-top:20px;"></div>
+
+      <div style="display:flex;justify-content:space-between;margin-top:20px;">
+        <button class="btn btn-outline" onclick="goToStep(1)">← 上一步</button>
+        <button class="btn btn-primary" onclick="goToStep(3)">下一步：执行清单 →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: 执行清单 -->
+    <div id="step3" class="step-content" style="display:none;">
+      <div class="stats-bar" id="modalStats" style="display:flex;gap:12px;margin-bottom:16px;"></div>
+
+      <div class="tabs" style="margin-bottom:12px;">
+        <div class="tab active" data-modal-tab="exec" onclick="switchModalTab('exec')">执行清单</div>
+        <div class="tab" data-modal-tab="countdown" onclick="switchModalTab('countdown')">倒排检查</div>
+        <div class="tab" data-modal-tab="contacts" onclick="switchModalTab('contacts')">联系人</div>
+      </div>
+
+      <div id="modal-tab-exec">
+        <table class="data-table" id="modalExecutionTable">
+          <thead><tr><th>序号</th><th>类型</th><th class="text-left">项目</th><th>日期</th><th class="text-left">详情</th><th>金额</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="modalExecutionBody"></tbody>
+        </table>
+      </div>
+
+      <div id="modal-tab-countdown" style="display:none;">
+        <table class="data-table" id="modalCountdownTable">
+          <thead><tr><th>节点</th><th class="text-left">动作</th><th>完成</th></tr></thead>
+          <tbody id="modalCountdownBody"></tbody>
+        </table>
+      </div>
+
+      <div id="modal-tab-contacts" style="display:none;">
+        <table class="data-table">
+          <thead><tr><th>角色</th><th>姓名</th><th>电话</th><th>备注</th></tr></thead>
+          <tbody id="modalContactsBody"></tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin-top:20px;">
+        <button class="btn btn-outline" onclick="goToStep(2)">← 上一步</button>
+        <div>
+          <button class="btn btn-success" onclick="saveTour()">保存团</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== New Supplier Modal ===== -->
+<div class="modal-overlay" id="newSupplierModal" style="display:none;">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 id="supplierModalTitle">新增供应商</h3>
+      <button class="modal-close" onclick="closeModal('newSupplierModal')">&times;</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>类型 *</label>
+        <select id="supplierType">
+          <option value="hotel">酒店</option>
+          <option value="car">包车</option>
+          <option value="guide">导游</option>
+          <option value="ticket">景点</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>名称 *</label>
+        <input id="supplierName" placeholder="如：希雅达酒店 / 王师傅包车" />
+      </div>
+      <div class="form-group">
+        <label>城市/路线</label>
+        <input id="supplierCity" placeholder="如：重庆 / 成都→都江堰" />
+      </div>
+      <div class="form-group">
+        <label>联系方式</label>
+        <input id="supplierContact" placeholder="如：13800138000" />
+      </div>
+      <div class="form-group full">
+        <label>价格参考</label>
+        <input id="supplierPrice" placeholder="如：¥400/晚 或 ¥1150/天" />
+      </div>
+      <div class="form-group full">
+        <label>备注</label>
+        <textarea id="supplierNotes" placeholder="如：英语司机、含接送、早餐免费等"></textarea>
+      </div>
+    </div>
+    <div style="text-align:right;margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveSupplier()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Add User Modal ===== -->
+<div class="modal-overlay" id="addUserModal" style="display:none;">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h3>添加用户</h3>
+      <button class="modal-close" onclick="document.getElementById('addUserModal').style.display='none'">&times;</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>用户名 *</label>
+        <input id="newUsername" placeholder="英文登录名，如：zhangsan">
+      </div>
+      <div class="form-group full">
+        <label>显示名称 *</label>
+        <input id="newDisplayName" placeholder="如：张三">
+      </div>
+      <div class="form-group full">
+        <label>密码 *</label>
+        <input id="newUserPassword" type="password" placeholder="设置初始密码">
+      </div>
+      <div class="form-group full">
+        <label>角色</label>
+        <select id="newUserRole">
+          <option value="user">普通成员</option>
+          <option value="admin">管理员</option>
+        </select>
+      </div>
+    </div>
+    <div style="text-align:right;margin-top:16px;">
+      <button class="btn btn-primary" onclick="addUser()">创建</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ Data Store ============
+let tours = [];
+let suppliers = [];
+let financeData = { revenues: [], payments: {}, reimbursements: [] };
+let currentEditingTourId = null;
+let modalServiceItems = [];
+let currentModalType = null;
+let currentSupplierTab = 'hotel';
+
+const STORAGE_KEY = 'inbound-tour-system-v3';
+
+// ============ Multi-User: Auth & Sync ============
+let currentUser = null;
+let authToken = null;
+let dataVersion = 0;          // 服务器数据版本号
+let lastUpdatedBy = '';       // 最后修改人
+let lastUpdatedAt = '';       // 最后修改时间
+let isSyncing = false;        // 正在同步中
+let saveInProgress = false;   // 正在保存中
+let saveQueued = false;       // 有排队的保存请求
+let autoRefreshTimer = null;  // 自动刷新定时器
+
+const typeConfig = {
+  hotel: {
+    icon: '&#127976;', label: '酒店',
+    fields: [
+      { key: 'city', label: '城市' },
+      { key: 'hotelName', label: '酒店名称' },
+      { key: 'hotelNameEn', label: '英文名' },
+      { key: 'checkIn', label: '入住日期', type: 'date' },
+      { key: 'checkOut', label: '退房日期', type: 'date' },
+      { key: 'roomType', label: '房型/间数' },
+      { key: 'nights', label: '晚数' },
+      { key: 'hotelAmount', label: '金额' },
+      { key: 'hotelNotes', label: '备注', full: true },
+    ],
+    checklist: [
+      { action: '确认酒店预订（房型、人数）', node: 'T-30' },
+      { action: '确认儿童入住政策', node: 'T-30' },
+      { action: '获取酒店确认号', node: 'T-14' },
+      { action: '确认酒店地址及交通', node: 'T-7' },
+      { action: '发送酒店信息给客户', node: 'T-3' },
+    ]
+  },
+  train: {
+    icon: '&#128644;', label: '高铁',
+    fields: [
+      { key: 'trainNo', label: '车次号' },
+      { key: 'fromStation', label: '出发站' },
+      { key: 'toStation', label: '到达站' },
+      { key: 'trainDate', label: '乘车日期', type: 'date' },
+      { key: 'departTime', label: '发车时间' },
+      { key: 'arriveTime', label: '到达时间' },
+      { key: 'seatClass', label: '座席等级' },
+      { key: 'ticketCount', label: '张数' },
+      { key: 'trainAmount', label: '金额' },
+      { key: 'trainNotes', label: '备注', full: true },
+    ],
+    checklist: [
+      { action: '确认乘车人护照信息', node: 'T-14' },
+      { action: '完成出票，获取座位号', node: 'T-14' },
+      { action: '确认儿童票政策', node: 'T-14' },
+      { action: '确认出发站交通方式', node: 'T-7' },
+      { action: '安排送站服务（如需）', node: 'T-7' },
+      { action: '发送车票信息给客户', node: 'T-3' },
+      { action: 'T-1 确认检票口及出发提醒', node: 'T-1' },
+    ]
+  },
+  flight: {
+    icon: '&#128747;', label: '机票',
+    fields: [
+      { key: 'flightNo', label: '航班号' },
+      { key: 'fromCity', label: '出发城市' },
+      { key: 'toCity', label: '到达城市' },
+      { key: 'flightDate', label: '飞行日期', type: 'date' },
+      { key: 'departTime', label: '起飞时间' },
+      { key: 'arriveTime', label: '降落时间' },
+      { key: 'cabinClass', label: '舱位' },
+      { key: 'ticketCount', label: '张数' },
+      { key: 'flightAmount', label: '金额' },
+      { key: 'flightNotes', label: '备注', full: true },
+    ],
+    checklist: [
+      { action: '确认乘车人护照信息', node: 'T-14' },
+      { action: '完成出票，获取座位号', node: 'T-14' },
+      { action: '确认行李额度', node: 'T-7' },
+      { action: '确认机场交通（送机/接机）', node: 'T-7' },
+      { action: '发送航班信息给客户', node: 'T-3' },
+      { action: 'T-1 确认航班动态', node: 'T-1' },
+    ]
+  },
+  car: {
+    icon: '&#128661;', label: '包车',
+    fields: [
+      { key: 'carRoute', label: '路线' },
+      { key: 'carDate', label: '服务日期', type: 'date' },
+      { key: 'carType', label: '车型' },
+      { key: 'carService', label: '服务类型' },
+      { key: 'carTime', label: '出发时间' },
+      { key: 'carPickup', label: '上车地点' },
+      { key: 'carAmount', label: '金额' },
+      { key: 'carNotes', label: '备注', full: true },
+    ],
+    checklist: [
+      { action: '确认车辆预订（车型、车牌）', node: 'T-14' },
+      { action: '确认司机联系方式及语言', node: 'T-14' },
+      { action: '确认行李空间', node: 'T-7' },
+      { action: '确认上车地点及时间', node: 'T-7' },
+      { action: '发送包车安排给客户', node: 'T-3' },
+      { action: 'T-1 与司机最终确认', node: 'T-1' },
+    ]
+  },
+  guide: {
+    icon: '&#128483;', label: '导游',
+    fields: [
+      { key: 'guideCity', label: '服务城市' },
+      { key: 'guideDate', label: '服务日期', type: 'date' },
+      { key: 'guideLanguage', label: '语种' },
+      { key: 'guideDuration', label: '服务时长' },
+      { key: 'guideRoute', label: '建议路线', full: true },
+      { key: 'guideAmount', label: '金额' },
+      { key: 'guideNotes', label: '备注', full: true },
+    ],
+    checklist: [
+      { action: '确认导游预订及资质', node: 'T-14' },
+      { action: '确认导游联系方式', node: 'T-14' },
+      { action: '确认集合时间地点', node: 'T-7' },
+      { action: '与导游沟通客户偏好', node: 'T-7' },
+      { action: '发送导游安排给客户', node: 'T-3' },
+      { action: 'T-1 与导游最终确认', node: 'T-1' },
+    ]
+  },
+  ticket: {
+    icon: '&#127915;', label: '门票',
+    fields: [
+      { key: 'ticketName', label: '景点名称' },
+      { key: 'ticketNameEn', label: '英文名' },
+      { key: 'ticketDate', label: '游玩日期', type: 'date' },
+      { key: 'ticketType', label: '票种' },
+      { key: 'ticketIncludes', label: '包含项目' },
+      { key: 'ticketCount', label: '张数' },
+      { key: 'ticketAmount', label: '金额' },
+      { key: 'ticketNotes', label: '备注', full: true },
+    ],
+    checklist: [
+      { action: '完成购票/预约', node: 'T-14' },
+      { action: '确认儿童票政策', node: 'T-14' },
+      { action: '确认景点开放时间', node: 'T-7' },
+      { action: '确认入园方式', node: 'T-7' },
+      { action: '发送门票信息给客户', node: 'T-3' },
+      { action: 'T-1 确认天气及注意事项', node: 'T-1' },
+    ]
+  }
+};
+
+// ============ Storage (Cloud API) ============
+function loadData() {
+  try {
+    // 尝试从 sessionStorage 恢复（页面刷新时快速恢复）
+    const cached = sessionStorage.getItem(STORAGE_KEY);
+    if (cached) {
+      const data = JSON.parse(cached);
+      tours = data.tours || [];
+      suppliers = data.suppliers || [];
+      financeData = data.financeData || { revenues: [], payments: {}, reimbursements: [] };
+      dataVersion = data._version || 0;
+    }
+  } catch(e) {
+    tours = []; suppliers = [];
+    financeData = { revenues: [], payments: {}, reimbursements: [] };
+  }
+}
+
+function saveData() {
+  // 先更新 sessionStorage（本地缓存）
+  const dataObj = { tours, suppliers, financeData, _version: dataVersion };
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(dataObj));
+  // 异步保存到服务器
+  saveToServer();
+}
+
+// 保存到服务器（带排队机制，防止并发请求）
+function saveToServer() {
+  if (saveInProgress) {
+    saveQueued = true;
+    return;
+  }
+  saveInProgress = true;
+  updateSyncStatus('syncing');
+
+  fetch('/api/data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+    body: JSON.stringify({ data: { tours, suppliers, financeData }, version: dataVersion })
+  })
+  .then(r => {
+    if (r.status === 401) { doLogout(); throw new Error('登录过期'); }
+    if (r.status === 409) return r.json().then(d => { throw { type: 'conflict', data: d }; });
+    if (!r.ok) throw new Error('保存失败');
+    return r.json();
+  })
+  .then(result => {
+    dataVersion = result.version;
+    lastUpdatedBy = result.updatedBy;
+    lastUpdatedAt = result.updatedAt;
+    updateSyncStatus('synced');
+  })
+  .catch(err => {
+    if (err.type === 'conflict') {
+      showConflictWarning(err.data);
+      updateSyncStatus('error');
+    } else {
+      updateSyncStatus('error');
+      console.error('Save failed:', err);
+    }
+  })
+  .finally(() => {
+    saveInProgress = false;
+    if (saveQueued) {
+      saveQueued = false;
+      saveToServer();
+    }
+  });
+}
+
+// 从服务器加载数据
+function loadFromServer() {
+  if (!authToken) return Promise.resolve();
+  isSyncing = true;
+  updateSyncStatus('syncing');
+  return fetch('/api/data', {
+    headers: { 'Authorization': 'Bearer ' + authToken }
+  })
+  .then(r => {
+    if (r.status === 401) { doLogout(); throw new Error('登录过期'); }
+    if (!r.ok) throw new Error('加载失败');
+    return r.json();
+  })
+  .then(result => {
+    if (result.version !== dataVersion) {
+      tours = result.data.tours || [];
+      suppliers = result.data.suppliers || [];
+      financeData = result.data.financeData || { revenues: [], payments: {}, reimbursements: [] };
+      dataVersion = result.version;
+      lastUpdatedBy = result.updatedBy;
+      lastUpdatedAt = result.updatedAt;
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ tours, suppliers, financeData, _version: dataVersion }));
+      // 重新渲染当前页面
+      const activePage = document.querySelector('.nav-item.active');
+      if (activePage) switchPage(activePage.dataset.page);
+    }
+    updateSyncStatus('synced');
+    updateLastSyncTime();
+  })
+  .catch(err => {
+    updateSyncStatus('error');
+    console.error('Load failed:', err);
+  })
+  .finally(() => { isSyncing = false; });
+}
+
+// 自动刷新（检查是否有其他人更新了数据）
+function startAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    // 如果有弹窗打开，跳过刷新（避免打断用户操作）
+    const hasOpenModal = document.querySelector('.modal-overlay[style*="display: flex"]') ||
+                         document.querySelector('.modal-overlay[style*="display:flex"]');
+    if (hasOpenModal || saveInProgress) return;
+    loadFromServer();
+  }, 15000); // 每15秒刷新一次
+}
+
+function updateSyncStatus(status) {
+  const el = document.getElementById('syncStatus');
+  const text = document.getElementById('syncText');
+  if (!el) return;
+  el.className = 'sync-status ' + status;
+  if (status === 'syncing') text.textContent = '同步中...';
+  else if (status === 'synced') text.textContent = '已同步';
+  else if (status === 'error') text.textContent = '同步异常';
+}
+
+function updateLastSyncTime() {
+  const el = document.getElementById('lastSyncTime');
+  if (el) el.textContent = '最后同步: ' + new Date().toLocaleTimeString('zh-CN');
+}
+
+function showConflictWarning(info) {
+  const banner = document.getElementById('conflictBanner');
+  const msg = document.getElementById('conflictMsg');
+  msg.textContent = `数据已被 ${info.updatedBy || '其他同事'} 修改（${info.updatedAt ? new Date(info.updatedAt).toLocaleString('zh-CN') : ''}），请刷新获取最新数据`;
+  banner.style.display = 'flex';
+}
+
+function reloadFromServer() {
+  document.getElementById('conflictBanner').style.display = 'none';
+  loadFromServer().then(() => {
+    showToast('数据已刷新');
+  });
+}
+
+// ============ Helpers ============
+function getItemName(item) {
+  const d = item.data;
+  switch(item.type) {
+    case 'hotel': return d.city + ' · ' + (d.hotelName || '酒店');
+    case 'train': return (d.trainNo || '') + ' ' + (d.fromStation || '') + '→' + (d.toStation || '');
+    case 'flight': return (d.flightNo || '') + ' ' + (d.fromCity || '') + '→' + (d.toCity || '');
+    case 'car': return d.carRoute || d.carService || '包车服务';
+    case 'guide': return (d.guideLanguage || '') + '导游 · ' + (d.guideCity || '');
+    case 'ticket': return d.ticketName || '景点门票';
+    default: return '服务项目';
+  }
+}
+
+function getItemDate(item) {
+  const d = item.data;
+  const dateKeys = ['checkIn', 'trainDate', 'flightDate', 'carDate', 'guideDate', 'ticketDate'];
+  for (const k of dateKeys) if (d[k]) return d[k];
+  return '';
+}
+
+function getItemAmount(item) {
+  const d = item.data;
+  const amtKeys = ['hotelAmount', 'trainAmount', 'flightAmount', 'carAmount', 'guideAmount', 'ticketAmount'];
+  for (const k of amtKeys) if (d[k]) return d[k];
+  return '';
+}
+
+function getItemDetail(item) {
+  const d = item.data;
+  switch(item.type) {
+    case 'hotel': return `${d.nights || ''} ${d.roomType || ''}`;
+    case 'train': return `${d.seatClass || ''} ${d.ticketCount || ''} ${d.departTime || ''}→${d.arriveTime || ''}`;
+    case 'flight': return `${d.cabinClass || ''} ${d.ticketCount || ''} ${d.departTime || ''}→${d.arriveTime || ''}`;
+    case 'car': return `${d.carType || ''} ${d.carService || ''}`;
+    case 'guide': return `${d.guideDuration || ''} ${d.guideRoute || ''}`;
+    case 'ticket': return `${d.ticketType || ''} ${d.ticketIncludes || ''}`;
+    default: return '';
+  }
+}
+
+function getTourProgress(tour) {
+  if (!tour.serviceItems || tour.serviceItems.length === 0) return 0;
+  const done = tour.serviceItems.filter(i => i.status === 'done').length;
+  return Math.round(done / tour.serviceItems.length * 100);
+}
+
+function getTourStage(tour) {
+  if (!tour.startDate) return 'T-30';
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const start = new Date(tour.startDate);
+  start.setHours(0,0,0,0);
+  const end = tour.endDate ? new Date(tour.endDate) : start;
+  end.setHours(0,0,0,0);
+  const days = Math.round((start - today) / (1000*60*60*24));
+
+  if (days < 0) {
+    if (today > end) return 'completed';
+    return 'ongoing';
+  }
+  if (days === 0) return 'today';
+  if (days <= 1) return 'T-1';
+  if (days <= 3) return 'T-3';
+  if (days <= 7) return 'T-7';
+  if (days <= 14) return 'T-14';
+  return 'T-30';
+}
+
+function getStageLabel(stage) {
+  const labels = {
+    'T-30': '出团前30天+',
+    'T-14': '出团前14天',
+    'T-7': '出团前7天',
+    'T-3': '出团前3天',
+    'T-1': '出团前1天',
+    'today': '今日出团',
+    'ongoing': '行程中',
+    'completed': '已完成'
+  };
+  return labels[stage] || stage;
+}
+
+function getDaysToStart(tour) {
+  if (!tour.startDate) return null;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const start = new Date(tour.startDate);
+  start.setHours(0,0,0,0);
+  return Math.round((start - today) / (1000*60*60*24));
+}
+
+function getUrgentTasks(tour) {
+  if (!tour.serviceItems) return [];
+  const tasks = [];
+  const daysToStart = getDaysToStart(tour);
+  if (daysToStart === null) return tasks;
+
+  const nodeToDays = { 'T-30': 30, 'T-14': 14, 'T-7': 7, 'T-3': 3, 'T-1': 1 };
+
+  tour.serviceItems.forEach((item, itemIdx) => {
+    if (!item.checklist) return;
+    item.checklist.forEach((c, cIdx) => {
+      if (c.done) return;
+      const nodeDays = nodeToDays[c.node];
+      if (nodeDays === undefined) return;
+      if (daysToStart <= nodeDays) {
+        tasks.push({
+          tourId: tour.id,
+          tourName: tour.tourName || tour.clientName,
+          itemId: item.id,
+          itemName: getItemName(item),
+          itemIdx: itemIdx,
+          cIdx: cIdx,
+          action: c.action,
+          node: c.node,
+          daysToStart: daysToStart,
+          urgency: nodeDays - daysToStart
+        });
+      }
+    });
+  });
+
+  return tasks;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function showToast(msg, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// ============ Page Navigation ============
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+  document.getElementById('page-' + page).style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+
+  if (page === 'dashboard') renderDashboard();
+  else if (page === 'kanban') renderKanban();
+  else if (page === 'urgent') renderUrgentTasks();
+  else if (page === 'tours') renderToursList();
+  else if (page === 'finance') renderFinance();
+  else if (page === 'suppliers') renderSuppliers();
+  else if (page === 'settings') renderSettings();
+}
+
+// ============ Dashboard ============
+function renderDashboard() {
+  const activeTours = tours.filter(t => {
+    const stage = getTourStage(t);
+    return stage !== 'completed';
+  });
+  const completedTours = tours.filter(t => getTourStage(t) === 'completed');
+
+  // Stats
+  document.getElementById('statActiveTours').textContent = activeTours.length;
+  document.getElementById('statActiveToursSub').textContent = `已完成 ${completedTours.length} 个`;
+
+  const allUrgentTasks = tours.flatMap(t => getUrgentTasks(t));
+  document.getElementById('statUrgentTasks').textContent = allUrgentTasks.length;
+
+  const weekTours = activeTours.filter(t => {
+    const d = getDaysToStart(t);
+    return d !== null && d >= 0 && d <= 7;
+  });
+  document.getElementById('statWeekTours').textContent = weekTours.length;
+
+  const monthRevenue = tours
+    .filter(t => {
+      const stage = getTourStage(t);
+      return stage === 'ongoing' || stage === 'completed';
+    })
+    .reduce((sum, t) => sum + (parseFloat(t.totalAmount) || 0), 0);
+  document.getElementById('statMonthRevenue').textContent = '¥' + monthRevenue.toLocaleString();
+
+  // Update sidebar badges
+  if (activeTours.length > 0) {
+    document.getElementById('navActiveCount').textContent = activeTours.length;
+    document.getElementById('navActiveCount').style.display = 'inline';
+  } else {
+    document.getElementById('navActiveCount').style.display = 'none';
+  }
+  if (allUrgentTasks.length > 0) {
+    document.getElementById('navUrgentCount').textContent = allUrgentTasks.length;
+    document.getElementById('navUrgentCount').style.display = 'inline';
+  } else {
+    document.getElementById('navUrgentCount').style.display = 'none';
+  }
+
+  // Calendar chart (next 30 days)
+  renderCalendarChart();
+
+  // Stage distribution
+  const stageGroups = {};
+  activeTours.forEach(t => {
+    const stage = getTourStage(t);
+    stageGroups[stage] = (stageGroups[stage] || 0) + 1;
+  });
+  const stageHtml = Object.entries(stageGroups).map(([s, c]) => {
+    const color = s === 'T-1' || s === 'today' ? 'var(--danger)' :
+                  s === 'T-3' || s === 'T-7' ? 'var(--warning)' :
+                  'var(--primary)';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;">
+      <span style="width:8px;height:8px;background:${color};border-radius:50%;"></span>
+      <span style="flex:1">${getStageLabel(s)}</span>
+      <strong>${c}</strong>
+    </div>`;
+  }).join('') || '<div style="color:var(--gray-400);padding:12px;text-align:center;font-size:13px;">暂无在管团</div>';
+  document.getElementById('stageDistribution').innerHTML = stageHtml;
+
+  // Recent activity
+  const recent = activeTours
+    .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+    .slice(0, 5);
+  if (recent.length === 0) {
+    document.getElementById('recentActivity').innerHTML =
+      '<div class="empty-state" style="padding:30px;"><div class="icon">&#128197;</div><div class="text">还没有团，点击右上角"新建团"开始</div></div>';
+  } else {
+    document.getElementById('recentActivity').innerHTML = recent.map(t => {
+      const days = getDaysToStart(t);
+      const progress = getTourProgress(t);
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100);cursor:pointer;" onclick="editTour('${t.id}')">
+        <div style="flex:1">
+          <div style="font-weight:500">${t.tourName || t.clientName}</div>
+          <div style="font-size:12px;color:var(--gray-600)">${t.clientName} · ${t.routeInfo || ''} · ${t.startDate || ''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;color:${days <= 7 ? 'var(--danger)' : 'var(--gray-600)'}">${days !== null ? (days >= 0 ? `${days}天后出团` : '已出团') : '未设日期'}</div>
+          <div style="font-size:11px;color:var(--gray-400)">完成度 ${progress}%</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function renderCalendarChart() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const groups = {};
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    groups[d.toISOString().slice(0,10)] = 0;
+  }
+  tours.forEach(t => {
+    if (t.startDate && groups.hasOwnProperty(t.startDate)) {
+      groups[t.startDate]++;
+    }
+  });
+  const max = Math.max(...Object.values(groups), 1);
+  const html = Object.entries(groups).map(([date, count]) => {
+    const d = new Date(date);
+    const isToday = date === today.toISOString().slice(0,10);
+    const height = (count / max) * 180;
+    return `<div class="chart-bar-group">
+      <div class="chart-bar" style="height:${height}px;${isToday ? 'background:var(--danger);' : ''}background:${count > 0 ? (isToday ? 'var(--danger)' : 'var(--primary)') : 'var(--gray-200)'}">
+        ${count > 0 ? `<span class="val">${count}</span>` : ''}
+      </div>
+      <div class="chart-label">${d.getMonth()+1}/${d.getDate()}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('calendarChart').innerHTML = html;
+}
+
+// ============ Kanban ============
+function renderKanban() {
+  const filter = document.getElementById('kanbanFilter').value;
+  const stages = ['T-30', 'T-14', 'T-7', 'T-3', 'T-1', 'today', 'ongoing', 'completed'];
+  const stageLabels = {
+    'T-30': 'T-30 · 准备中',
+    'T-14': 'T-14 · 复核期',
+    'T-7': 'T-7 · 审核期',
+    'T-3': 'T-3 · 确认期',
+    'T-1': 'T-1 · 最后冲刺',
+    'today': '今日出团',
+    'ongoing': '行程中',
+    'completed': '已完成'
+  };
+
+  const board = document.getElementById('kanbanBoard');
+  board.innerHTML = stages.map(stage => {
+    let stageTours = tours.filter(t => getTourStage(t) === stage);
+    if (filter === 'active') stageTours = stageTours.filter(t => getTourStage(t) !== 'completed');
+    else if (filter === 'urgent') stageTours = stageTours.filter(t => {
+      const d = getDaysToStart(t);
+      return d !== null && d >= 0 && d <= 7;
+    });
+    else if (filter === 'completed') stageTours = stageTours.filter(t => getTourStage(t) === 'completed');
+
+    const cards = stageTours.map(t => {
+      const days = getDaysToStart(t);
+      const progress = getTourProgress(t);
+      const urgentClass = days !== null && days <= 3 && days >= 0 ? 'urgent' :
+                          days !== null && days <= 7 && days >= 0 ? 'warning' :
+                          stage === 'completed' ? 'done' : 'normal';
+      return `<div class="kanban-card ${urgentClass}" onclick="editTour('${t.id}')">
+        <div class="card-name">${t.tourName || t.clientName}</div>
+        <div class="card-meta">${t.clientName} · ${t.groupSize || ''}</div>
+        <div class="card-meta">${t.routeInfo || '未设路线'}</div>
+        <div class="card-meta" style="margin-top:4px;">${t.startDate || '未设日期'}</div>
+        <div class="card-progress"><div class="card-progress-bar" style="width:${progress}%"></div></div>
+      </div>`;
+    }).join('');
+
+    return `<div class="kanban-column">
+      <div class="kanban-column-header">
+        <div class="kanban-column-title">${stageLabels[stage]}</div>
+        <div class="kanban-column-count">${stageTours.length}</div>
+      </div>
+      ${cards || '<div style="color:var(--gray-400);font-size:12px;padding:8px;text-align:center;">空</div>'}
+    </div>`;
+  }).join('');
+}
+
+// ============ Urgent Tasks ============
+function renderUrgentTasks() {
+  const filter = document.getElementById('urgentFilter').value;
+  const allTasks = tours.flatMap(t => getUrgentTasks(t).map(task => ({ ...task, tour: t })));
+
+  let filtered = allTasks;
+  if (filter === 'today') {
+    filtered = allTasks.filter(t => t.urgency >= 0 && t.daysToStart <= 1);
+  } else if (filter === 'week') {
+    filtered = allTasks.filter(t => t.daysToStart <= 7);
+  } else if (filter === 'overdue') {
+    filtered = allTasks.filter(t => t.daysToStart < 0);
+  }
+
+  filtered.sort((a, b) => a.urgency - b.urgency);
+
+  if (filtered.length === 0) {
+    document.getElementById('urgentTasksList').innerHTML =
+      '<div class="empty-state"><div class="icon">&#9989;</div><div class="text">没有紧急任务，太棒了！</div></div>';
+    return;
+  }
+
+  document.getElementById('urgentTasksList').innerHTML = `
+    <table class="data-table">
+      <thead><tr>
+        <th>团</th><th>服务项</th><th class="text-left">待完成动作</th>
+        <th>节点</th><th>距出团</th><th>状态</th><th>操作</th>
+      </tr></thead>
+      <tbody>
+        ${filtered.map(t => {
+          const urgencyBadge = t.urgency >= 0 ?
+            `<span class="badge badge-pending">差 ${t.urgency} 天</span>` :
+            `<span class="badge badge-progress">已超出 ${-t.urgency} 天</span>`;
+          return `<tr>
+            <td class="text-left"><strong>${t.tourName}</strong><br><span style="font-size:11px;color:var(--gray-600)">${t.tour.clientName}</span></td>
+            <td class="text-left">${t.itemName}</td>
+            <td class="text-left">${t.action}</td>
+            <td><span class="badge badge-gray">${t.node}</span></td>
+            <td>${t.daysToStart >= 0 ? t.daysToStart + ' 天' : '行程中'}</td>
+            <td>${urgencyBadge}</td>
+            <td><button class="btn btn-success btn-sm" onclick="markTaskDone('${t.tourId}','${t.itemId}',${t.cIdx})">完成</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function markTaskDone(tourId, itemId, cIdx) {
+  const tour = tours.find(t => t.id === tourId);
+  if (!tour) return;
+  const item = tour.serviceItems.find(i => i.id === itemId);
+  if (item && item.checklist && item.checklist[cIdx]) {
+    item.checklist[cIdx].done = true;
+    tour.updatedAt = new Date().toISOString();
+    saveData();
+    renderUrgentTasks();
+    showToast('已标记完成');
+  }
+}
+
+// ============ Tours List ============
+function renderToursList() {
+  const search = document.getElementById('tourSearch').value.toLowerCase();
+  const filtered = tours.filter(t => {
+    if (!search) return true;
+    return (t.tourName || '').toLowerCase().includes(search) ||
+           (t.clientName || '').toLowerCase().includes(search) ||
+           (t.routeInfo || '').toLowerCase().includes(search);
+  });
+
+  if (filtered.length === 0) {
+    document.getElementById('toursTableBody').innerHTML =
+      `<tr><td colspan="9"><div class="empty-state"><div class="icon">&#128197;</div><div class="text">${tours.length === 0 ? '还没有团，点击右上角"新建团"开始' : '没有匹配的团'}</div></div></td></tr>`;
+    return;
+  }
+
+  document.getElementById('toursTableBody').innerHTML = filtered.map(t => {
+    const days = getDaysToStart(t);
+    const progress = getTourProgress(t);
+    const stage = getTourStage(t);
+    const stageBadge = stage === 'completed' ? '<span class="badge badge-done">已完成</span>' :
+                       stage === 'ongoing' ? '<span class="badge badge-progress">行程中</span>' :
+                       days !== null && days <= 7 ? `<span class="badge badge-pending">${getStageLabel(stage)}</span>` :
+                       `<span class="badge badge-primary">${getStageLabel(stage)}</span>`;
+    return `<tr>
+      <td class="text-left"><strong>${t.tourName || '-'}</strong></td>
+      <td>${t.clientName || '-'}</td>
+      <td>${t.groupSize || '-'}</td>
+      <td class="text-left">${t.routeInfo || '-'}</td>
+      <td>${t.startDate || '-'}</td>
+      <td>${days !== null ? (days >= 0 ? days + ' 天' : '已出团') : '-'}</td>
+      <td>${stageBadge}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div style="flex:1;height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;background:var(--primary);width:${progress}%"></div>
+          </div>
+          <span style="font-size:11px;color:var(--gray-600);width:30px;">${progress}%</span>
+        </div>
+      </td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="editTour('${t.id}')">编辑</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteTour('${t.id}')">删除</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteTour(id) {
+  if (!confirm('确定要删除这个团吗？此操作不可恢复。')) return;
+  tours = tours.filter(t => t.id !== id);
+  saveData();
+  renderToursList();
+  showToast('已删除', 'warning');
+}
+
+// ============ Suppliers ============
+function switchSupplierTab(tab) {
+  currentSupplierTab = tab;
+  document.querySelectorAll('[data-supplier-tab]').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[data-supplier-tab="${tab}"]`).classList.add('active');
+  renderSuppliers();
+}
+
+function renderSuppliers() {
+  const filtered = suppliers.filter(s => s.type === currentSupplierTab);
+  const tbody = document.getElementById('suppliersTableBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:30px;"><div class="icon">&#128176;</div><div class="text">还没有${currentSupplierTab === 'hotel' ? '酒店' : currentSupplierTab === 'car' ? '包车' : currentSupplierTab === 'guide' ? '导游' : '景点'}供应商</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(s => `<tr>
+    <td class="text-left"><strong>${s.name}</strong></td>
+    <td>${s.city || '-'}</td>
+    <td>${s.contact || '-'}</td>
+    <td>${s.price || '-'}</td>
+    <td>${s.usageCount || 0}</td>
+    <td class="text-left">${s.notes || '-'}</td>
+    <td>
+      <button class="btn btn-ghost btn-sm" onclick="deleteSupplier('${s.id}')">删除</button>
+    </td>
+  </tr>`).join('');
+}
+
+function deleteSupplier(id) {
+  if (!confirm('确定删除？')) return;
+  suppliers = suppliers.filter(s => s.id !== id);
+  saveData();
+  renderSuppliers();
+  showToast('已删除', 'warning');
+}
+
+function openNewSupplierModal() {
+  document.getElementById('supplierType').value = currentSupplierTab;
+  document.getElementById('supplierName').value = '';
+  document.getElementById('supplierCity').value = '';
+  document.getElementById('supplierContact').value = '';
+  document.getElementById('supplierPrice').value = '';
+  document.getElementById('supplierNotes').value = '';
+  document.getElementById('supplierModalTitle').textContent = '新增供应商';
+  document.getElementById('newSupplierModal').style.display = 'flex';
+}
+
+function saveSupplier() {
+  const name = document.getElementById('supplierName').value.trim();
+  if (!name) { showToast('请填写名称', 'warning'); return; }
+  suppliers.push({
+    id: generateId(),
+    type: document.getElementById('supplierType').value,
+    name: name,
+    city: document.getElementById('supplierCity').value.trim(),
+    contact: document.getElementById('supplierContact').value.trim(),
+    price: document.getElementById('supplierPrice').value.trim(),
+    notes: document.getElementById('supplierNotes').value.trim(),
+    usageCount: 0,
+    createdAt: new Date().toISOString()
+  });
+  saveData();
+  closeModal('newSupplierModal');
+  renderSuppliers();
+  showToast('供应商已保存');
+}
+
+// ============ Tour Modal ============
+function openNewTourModal() {
+  currentEditingTourId = null;
+  modalServiceItems = [];
+  currentModalType = null;
+  document.getElementById('tourModalTitle').textContent = '新建团';
+  document.getElementById('tourName').value = '';
+  document.getElementById('clientName').value = '';
+  document.getElementById('groupSize').value = '';
+  document.getElementById('operator').value = '';
+  document.getElementById('startDate').value = '';
+  document.getElementById('endDate').value = '';
+  document.getElementById('routeInfo').value = '';
+  document.getElementById('totalAmount').value = '';
+  document.getElementById('depositAmount').value = '';
+  document.getElementById('specialNotes').value = '';
+  document.querySelectorAll('.service-type-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('serviceForm').style.display = 'none';
+  document.getElementById('addedServicesList').innerHTML = '';
+  goToStep(1);
+  document.getElementById('newTourModal').style.display = 'flex';
+}
+
+function editTour(id) {
+  const tour = tours.find(t => t.id === id);
+  if (!tour) return;
+  currentEditingTourId = id;
+  modalServiceItems = JSON.parse(JSON.stringify(tour.serviceItems || []));
+  currentModalType = null;
+  document.getElementById('tourModalTitle').textContent = '编辑团：' + (tour.tourName || tour.clientName);
+  document.getElementById('tourName').value = tour.tourName || '';
+  document.getElementById('clientName').value = tour.clientName || '';
+  document.getElementById('groupSize').value = tour.groupSize || '';
+  document.getElementById('operator').value = tour.operator || '';
+  document.getElementById('startDate').value = tour.startDate || '';
+  document.getElementById('endDate').value = tour.endDate || '';
+  document.getElementById('routeInfo').value = tour.routeInfo || '';
+  document.getElementById('totalAmount').value = tour.totalAmount || '';
+  document.getElementById('depositAmount').value = tour.depositAmount || '';
+  document.getElementById('specialNotes').value = tour.specialNotes || '';
+  document.querySelectorAll('.service-type-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('serviceForm').style.display = 'none';
+  renderModalServiceList();
+  goToStep(1);
+  document.getElementById('newTourModal').style.display = 'flex';
+}
+
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+function switchStep(n) {
+  document.querySelectorAll('[data-step]').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[data-step="${n}"]`).classList.add('active');
+  document.querySelectorAll('.step-content').forEach(c => c.style.display = 'none');
+  document.getElementById('step' + n).style.display = 'block';
+}
+
+function goToStep(n) {
+  if (n === 2) {
+    if (!document.getElementById('tourName').value.trim() || !document.getElementById('clientName').value.trim()) {
+      showToast('请填写团名和客户名', 'warning');
+      return;
+    }
+    if (!document.getElementById('startDate').value || !document.getElementById('endDate').value) {
+      showToast('请填写服务开始和结束日期', 'warning');
+      return;
+    }
+  }
+  switchStep(n);
+  if (n === 3) renderModalStep3();
+}
+
+function switchModalTab(tab) {
+  document.querySelectorAll('[data-modal-tab]').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[data-modal-tab="${tab}"]`).classList.add('active');
+  document.getElementById('modal-tab-exec').style.display = tab === 'exec' ? 'block' : 'none';
+  document.getElementById('modal-tab-countdown').style.display = tab === 'countdown' ? 'block' : 'none';
+  document.getElementById('modal-tab-contacts').style.display = tab === 'contacts' ? 'block' : 'none';
+}
+
+function selectServiceType(btn) {
+  document.querySelectorAll('.service-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentModalType = btn.dataset.type;
+
+  const config = typeConfig[currentModalType];
+  const fieldsDiv = document.getElementById('dynamicFields');
+  fieldsDiv.innerHTML = '';
+  config.fields.forEach(f => {
+    const group = document.createElement('div');
+    group.className = 'form-group' + (f.full ? ' full' : '');
+    group.innerHTML = `<label>${f.label}</label><input id="sf_${f.key}" placeholder="${f.label}" ${f.type === 'date' ? 'type="date"' : ''} />`;
+    fieldsDiv.appendChild(group);
+  });
+  document.getElementById('serviceForm').style.display = 'block';
+}
+
+function addServiceItem() {
+  if (!currentModalType) return;
+  const config = typeConfig[currentModalType];
+  const data = {};
+  let hasData = false;
+  config.fields.forEach(f => {
+    const val = document.getElementById(`sf_${f.key}`).value.trim();
+    if (val) { data[f.key] = val; hasData = true; }
+  });
+  if (!hasData) { showToast('请至少填写一项信息', 'warning'); return; }
+
+  modalServiceItems.push({
+    id: generateId(),
+    type: currentModalType,
+    typeLabel: config.label,
+    typeIcon: config.icon,
+    data: data,
+    status: 'pending',
+    reviewer: '',
+    checklist: config.checklist.map(c => ({ ...c, done: false }))
+  });
+  renderModalServiceList();
+  config.fields.forEach(f => {
+    const el = document.getElementById(`sf_${f.key}`);
+    if (el) el.value = '';
+  });
+  document.querySelectorAll('.service-type-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('serviceForm').style.display = 'none';
+  currentModalType = null;
+  showToast('已添加');
+}
+
+function renderModalServiceList() {
+  const area = document.getElementById('addedServicesList');
+  if (modalServiceItems.length === 0) {
+    area.innerHTML = '';
+    return;
+  }
+  area.innerHTML = `<div style="font-size:13px;font-weight:500;margin-bottom:8px;">已添加 ${modalServiceItems.length} 项服务：</div>` +
+    modalServiceItems.map((item, idx) => `<div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--gray-50);border-radius:6px;margin-bottom:4px;font-size:13px;">
+      <span>${item.typeIcon}</span>
+      <span style="flex:1">${getItemName(item)}</span>
+      <span style="color:var(--gray-600);font-size:12px;">${getItemDate(item)}</span>
+      <button class="btn btn-ghost btn-sm" onclick="removeModalService(${idx})">×</button>
+    </div>`).join('');
+}
+
+function removeModalService(idx) {
+  modalServiceItems.splice(idx, 1);
+  renderModalServiceList();
+}
+
+function renderModalStep3() {
+  // Stats
+  const total = modalServiceItems.length;
+  const done = modalServiceItems.filter(i => i.status === 'done').length;
+  const progress = modalServiceItems.filter(i => i.status === 'progress').length;
+  const pending = modalServiceItems.filter(i => i.status === 'pending').length;
+  document.getElementById('modalStats').innerHTML = `
+    <div class="stat-card" style="flex:1;padding:12px;"><div style="font-size:11px;color:var(--gray-600);">总</div><div style="font-size:20px;font-weight:500;color:var(--primary);">${total}</div></div>
+    <div class="stat-card" style="flex:1;padding:12px;"><div style="font-size:11px;color:var(--gray-600);">待处理</div><div style="font-size:20px;font-weight:500;color:var(--danger);">${pending}</div></div>
+    <div class="stat-card" style="flex:1;padding:12px;"><div style="font-size:11px;color:var(--gray-600);">进行中</div><div style="font-size:20px;font-weight:500;color:var(--warning);">${progress}</div></div>
+    <div class="stat-card" style="flex:1;padding:12px;"><div style="font-size:11px;color:var(--gray-600);">完成</div><div style="font-size:20px;font-weight:500;color:var(--success);">${done}</div></div>
+  `;
+
+  // Execution table
+  document.getElementById('modalExecutionBody').innerHTML = modalServiceItems.map((item, idx) => {
+    const statusBadge = item.status === 'done' ? '<span class="badge badge-done">已完成</span>' :
+                       item.status === 'progress' ? '<span class="badge badge-progress">进行中</span>' :
+                       '<span class="badge badge-pending">待处理</span>';
+    return `<tr>
+      <td>${idx+1}</td>
+      <td>${item.typeIcon}</td>
+      <td class="text-left">${getItemName(item)}</td>
+      <td>${getItemDate(item)}</td>
+      <td class="text-left">${getItemDetail(item)}</td>
+      <td>${getItemAmount(item)}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <select onchange="modalServiceItems[${idx}].status=this.value" style="padding:2px 6px;font-size:11px;border:1px solid var(--gray-200);border-radius:4px;">
+          <option value="pending" ${item.status==='pending'?'selected':''}>待处理</option>
+          <option value="progress" ${item.status==='progress'?'selected':''}>进行中</option>
+          <option value="done" ${item.status==='done'?'selected':''}>已完成</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="modalServiceItems.splice(${idx},1);renderModalStep3();renderModalServiceList();">×</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Countdown
+  const countdownNodes = [
+    { node: 'T-30', label: '出团前30天' },
+    { node: 'T-14', label: '出团前14天' },
+    { node: 'T-7', label: '出团前7天' },
+    { node: 'T-3', label: '出团前3天' },
+    { node: 'T-1', label: '出团前1天' },
+  ];
+  let cdHtml = '';
+  countdownNodes.forEach(cn => {
+    const relevantChecks = modalServiceItems.flatMap((item, itemIdx) =>
+      item.checklist.map((c, cIdx) => ({ action: c.action, done: c.done, itemIdx, cIdx, itemName: getItemName(item) }))
+        .filter(c => c.action && modalServiceItems[itemIdx].checklist[cIdx].node === cn.node)
+    );
+    cdHtml += `<tr>
+      <td><strong>${cn.label}</strong></td>
+      <td class="text-left">${relevantChecks.map(c => `<div style="margin:2px 0;"><label><input type="checkbox" ${c.done?'checked':''} onchange="modalServiceItems[${c.itemIdx}].checklist[${c.cIdx}].done=this.checked;renderModalStep3();" /> ${c.action} <span style="color:var(--gray-400);font-size:11px;">[${c.itemName}]</span></label></div>`).join('') || '<span style="color:var(--gray-400);">—</span>'}</td>
+      <td>${relevantChecks.filter(c => c.done).length}/${relevantChecks.length}</td>
+    </tr>`;
+  });
+  document.getElementById('modalCountdownBody').innerHTML = cdHtml;
+
+  // Contacts
+  const roles = ['项目经理'];
+  modalServiceItems.forEach(item => {
+    if (item.type === 'guide') roles.push(`${item.data.guideLanguage || '外语'}导游（${getItemDate(item)}）`);
+    if (item.type === 'car') roles.push(`包车司机（${getItemDate(item)}）`);
+  });
+  roles.push('24小时紧急联络');
+  document.getElementById('modalContactsBody').innerHTML = roles.map(r =>
+    `<tr><td>${r}</td><td><input style="width:80px;padding:2px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;" /></td><td><input style="width:120px;padding:2px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;" /></td><td><input style="width:120px;padding:2px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;" /></td></tr>`
+  ).join('');
+}
+
+function saveTour() {
+  if (modalServiceItems.length === 0) {
+    if (!confirm('还没有添加任何服务项目，确定保存吗？')) return;
+  }
+  const tourData = {
+    id: currentEditingTourId || generateId(),
+    tourName: document.getElementById('tourName').value.trim(),
+    clientName: document.getElementById('clientName').value.trim(),
+    groupSize: document.getElementById('groupSize').value.trim(),
+    operator: document.getElementById('operator').value.trim(),
+    startDate: document.getElementById('startDate').value,
+    endDate: document.getElementById('endDate').value,
+    routeInfo: document.getElementById('routeInfo').value.trim(),
+    totalAmount: document.getElementById('totalAmount').value,
+    depositAmount: document.getElementById('depositAmount').value,
+    specialNotes: document.getElementById('specialNotes').value.trim(),
+    serviceItems: modalServiceItems,
+    updatedAt: new Date().toISOString(),
+    createdAt: currentEditingTourId ?
+      (tours.find(t => t.id === currentEditingTourId)?.createdAt || new Date().toISOString()) :
+      new Date().toISOString()
+  };
+
+  if (currentEditingTourId) {
+    const idx = tours.findIndex(t => t.id === currentEditingTourId);
+    if (idx >= 0) tours[idx] = tourData;
+    showToast('团已更新');
+  } else {
+    tours.push(tourData);
+    showToast('团已创建');
+  }
+
+  saveData();
+  closeModal('newTourModal');
+  switchPage('dashboard');
+}
+
+// ============ Settings ============
+// ============ Finance Center ============
+function getServiceCost(tour) {
+  // 提取一个团的所有服务项成本
+  const services = tour.services || [];
+  return services.filter(s => s.type !== 'info').reduce((sum, s) => {
+    const amount = parseFloat(s.amount) || 0;
+    return sum + amount;
+  }, 0);
+}
+
+function getTourRevenue(tourId) {
+  // 提取一个团的所有收入
+  const revenues = (tourId === undefined ? financeData.revenues : financeData.revenues.filter(r => r.tourId === tourId));
+  return revenues.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+}
+
+function getMonthRange() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  return {
+    start: new Date(year, month, 1),
+    end: new Date(year, month + 1, 0, 23, 59, 59)
+  };
+}
+
+function isInMonth(dateStr, range) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  return d >= range.start && d <= range.end;
+}
+
+// 成本类别映射
+const COST_CATEGORIES = {
+  transport: { label: '交通', types: ['train', 'flight', 'car'], color: '#1A4D8F', icon: '\u{1F682}' },
+  hotel:     { label: '酒店', types: ['hotel'],                   color: '#1D9E75', icon: '\u{1F3E8}' },
+  guide:     { label: '导游', types: ['guide'],                   color: '#BA7517', icon: '\u{1F464}' },
+  ticket:    { label: '门票', types: ['ticket'],                  color: '#A32D2D', icon: '\u{1F3AB}' },
+  meal:      { label: '餐饮', types: ['meal'],                    color: '#8B5CF6', icon: '\u{1F37D}\u{FE0F}' },
+  other:     { label: '其他', types: ['other', 'info'],            color: '#06B6D4', icon: '\u{1F4E6}' }
+};
+
+function getCostCategory(serviceType) {
+  for (const [key, cat] of Object.entries(COST_CATEGORIES)) {
+    if (cat.types.includes(serviceType)) return key;
+  }
+  return 'other';
+}
+
+function closeDynamicModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function renderFinance() {
+  if (!financeData.revenues) financeData.revenues = [];
+  if (!financeData.payments) financeData.payments = {};
+  if (!financeData.reimbursements) financeData.reimbursements = [];
+
+  const range = getMonthRange();
+
+  // 本月营收
+  const monthRevenues = financeData.revenues.filter(r => isInMonth(r.date, range));
+  const monthRevenue = monthRevenues.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+
+  // 本月成本
+  const monthTours = tours.filter(t => isInMonth(t.startDate, range) || isInMonth(t.endDate, range));
+  const monthCost = monthTours.reduce((s, t) => s + getServiceCost(t), 0);
+
+  const monthProfit = monthRevenue - monthCost;
+  const profitRate = monthRevenue > 0 ? (monthProfit / monthRevenue * 100) : 0;
+
+  // 待付供应商
+  let pendingPay = 0, pendingCount = 0;
+  tours.forEach(t => {
+    (t.services || []).forEach(s => {
+      if (s.type === 'info' || !s.supplier) return;
+      const amount = parseFloat(s.amount) || 0;
+      if (amount <= 0) return;
+      const payment = financeData.payments[s.id] || { status: 'unpaid', paid: 0 };
+      const remaining = amount - (parseFloat(payment.paid) || 0);
+      if (payment.status !== 'paid' && remaining > 0) {
+        pendingPay += remaining;
+        pendingCount++;
+      }
+    });
+  });
+
+  document.getElementById('finMonthRevenue').textContent = '\u00A5' + monthRevenue.toLocaleString();
+  document.getElementById('finMonthRevenueSub').textContent = monthRevenues.length + ' \u7B14\u6536\u6B3E';
+  document.getElementById('finMonthCost').textContent = '\u00A5' + monthCost.toLocaleString();
+  document.getElementById('finMonthCostSub').textContent = monthTours.length + ' \u4E2A\u56E2';
+  document.getElementById('finMonthProfit').textContent = (monthProfit >= 0 ? '\u00A5' : '-\u00A5') + Math.abs(monthProfit).toLocaleString();
+  document.getElementById('finMonthProfitSub').textContent = '\u6BDB\u5229\u7387 ' + profitRate.toFixed(1) + '%';
+  document.getElementById('finMonthProfit').style.color = monthProfit >= 0 ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('finPendingPay').textContent = '\u00A5' + pendingPay.toLocaleString();
+  document.getElementById('finPendingPaySub').textContent = pendingCount + ' \u7B14\u5F85\u4ED8';
+
+  renderFinanceRevenue();
+  renderFinanceCost();
+  renderFinanceReimburse();
+}
+
+function switchFinanceTab(tab) {
+  document.querySelectorAll('[data-fin-tab]').forEach(t => t.classList.remove('active'));
+  document.querySelector('[data-fin-tab="' + tab + '"]').classList.add('active');
+  document.querySelectorAll('.fin-pane').forEach(p => p.style.display = 'none');
+  document.getElementById('finPane-' + tab).style.display = 'block';
+}
+
+function renderFinanceRevenue() {
+  const revenues = (financeData.revenues || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  let html = '';
+  if (revenues.length === 0) {
+    html = '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:24px;">\u6682\u65E0\u6536\u5165\u8BB0\u5F55\uFF0C\u70B9\u51FB\u53F3\u4E0A\u89D2\u201C\u5F55\u5165\u6536\u5165\u201D\u5F00\u59CB\u6DFB\u52A0</td></tr>';
+  } else {
+    revenues.forEach(r => {
+      const tour = tours.find(t => t.id === r.tourId);
+      const statusLabels = { received: '\u5DF2\u5230\u8D26', pending: '\u5F85\u5230\u8D26', partial: '\u90E8\u5206\u5230\u8D26' };
+      const statusColors = { received: 'success', pending: 'warning', partial: 'warning' };
+      html += '<tr>' +
+        '<td>' + (tour ? tour.name : '<span style="color:var(--gray-400);">\u5DF2\u5220\u9664\u56E2</span>') + '</td>' +
+        '<td>' + (tour ? (tour.client || '-') : '-') + '</td>' +
+        '<td>' + (r.item || '-') + '</td>' +
+        '<td style="font-weight:600;">\u00A5' + (parseFloat(r.amount) || 0).toLocaleString() + '</td>' +
+        '<td>' + (r.date || '-') + '</td>' +
+        '<td>' + (r.method || '-') + '</td>' +
+        '<td><span class="stage-badge stage-' + (statusColors[r.status] || 'new') + '">' + (statusLabels[r.status] || r.status || '-') + '</span></td>' +
+        '<td><button class="btn btn-sm btn-danger" onclick="deleteRevenue(\'' + r.id + '\')">\u5220\u9664</button></td>' +
+        '</tr>';
+    });
+  }
+  document.getElementById('finRevenueTable').innerHTML = html;
+}
+
+function openRevenueModal() {
+  // 先移除已有的同名弹窗
+  closeDynamicModal('revenueModal');
+  const tourOptions = tours.map(t => '<option value="' + t.id + '">' + t.name + '\uFF08' + (t.client || '-') + '\uFF09</option>').join('');
+  const html = '<div class="modal-overlay" id="revenueModal" style="display:flex;">' +
+    '<div class="modal" style="max-width:520px;">' +
+      '<div class="modal-header">' +
+        '<h3>\u5F55\u5165\u6536\u5165</h3>' +
+        '<button class="modal-close" onclick="closeDynamicModal(\'revenueModal\')">&times;</button>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u5173\u8054\u56E2 <span style="color:var(--danger);">*</span></label>' +
+        '<select id="revTour" class="form-control"><option value="">\u8BF7\u9009\u62E9</option>' + tourOptions + '</select>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u6536\u5165\u9879\u76EE</label>' +
+        '<select id="revItem" class="form-control">' +
+          '<option value="\u56E2\u8D39">\u56E2\u8D39</option>' +
+          '<option value="\u5B9A\u91D1">\u5B9A\u91D1</option>' +
+          '<option value="\u5C3E\u6B3E">\u5C3E\u6B3E</option>' +
+          '<option value="\u52A0\u9879">\u52A0\u9879</option>' +
+          '<option value="\u5176\u4ED6">\u5176\u4ED6</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u91D1\u989D (\u00A5) <span style="color:var(--danger);">*</span></label>' +
+        '<input type="number" id="revAmount" class="form-control" placeholder="0.00" step="0.01">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u5230\u8D26\u65E5\u671F</label>' +
+        '<input type="date" id="revDate" class="form-control" value="' + new Date().toISOString().slice(0, 10) + '">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u6536\u6B3E\u65B9\u5F0F</label>' +
+        '<select id="revMethod" class="form-control">' +
+          '<option value="\u94F6\u884C\u8F6C\u8D26">\u94F6\u884C\u8F6C\u8D26</option>' +
+          '<option value="\u652F\u4ED8\u5B9D">\u652F\u4ED8\u5B9D</option>' +
+          '<option value="\u5FAE\u4FE1">\u5FAE\u4FE1</option>' +
+          '<option value="\u73B0\u91D1">\u73B0\u91D1</option>' +
+          '<option value="PayPal">PayPal</option>' +
+          '<option value="\u5176\u4ED6">\u5176\u4ED6</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u72B6\u6001</label>' +
+        '<select id="revStatus" class="form-control">' +
+          '<option value="received">\u5DF2\u5230\u8D26</option>' +
+          '<option value="pending">\u5F85\u5230\u8D26</option>' +
+          '<option value="partial">\u90E8\u5206\u5230\u8D26</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u5907\u6CE8</label>' +
+        '<input type="text" id="revNote" class="form-control" placeholder="\u53EF\u9009">' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">' +
+        '<button class="btn btn-secondary" onclick="closeDynamicModal(\'revenueModal\')">\u53D6\u6D88</button>' +
+        '<button class="btn btn-primary" onclick="saveRevenue()">\u4FDD\u5B58</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function saveRevenue() {
+  const tourId = document.getElementById('revTour').value;
+  const item = document.getElementById('revItem').value;
+  const amount = parseFloat(document.getElementById('revAmount').value);
+  const date = document.getElementById('revDate').value;
+  const method = document.getElementById('revMethod').value;
+  const status = document.getElementById('revStatus').value;
+  const note = document.getElementById('revNote').value;
+
+  if (!tourId) return showToast('\u8BF7\u9009\u62E9\u5173\u8054\u56E2', 'error');
+  if (!amount || amount <= 0) return showToast('\u8BF7\u8F93\u5165\u6709\u6548\u91D1\u989D', 'error');
+
+  if (!financeData.revenues) financeData.revenues = [];
+  financeData.revenues.push({
+    id: generateId(),
+    tourId, item, amount, date, method, status, note,
+    createdAt: new Date().toISOString()
+  });
+  saveData();
+  closeDynamicModal('revenueModal');
+  renderFinance();
+  showToast('\u6536\u5165\u5DF2\u5F55\u5165', 'success');
+}
+
+function deleteRevenue(id) {
+  if (!confirm('\u786E\u5B9A\u8981\u5220\u9664\u8FD9\u6761\u6536\u5165\u8BB0\u5F55\u5417\uFF1F')) return;
+  financeData.revenues = financeData.revenues.filter(r => r.id !== id);
+  saveData();
+  renderFinance();
+  showToast('\u5DF2\u5220\u9664', 'success');
+}
+
+function renderFinanceCost() {
+  const filter = document.getElementById('finCostTourFilter');
+  const currentVal = filter ? filter.value : '';
+  if (filter) {
+    filter.innerHTML = '<option value="">\u5168\u90E8\u56E2</option>' + tours.map(t => '<option value="' + t.id + '">' + t.name + '</option>').join('');
+    if (currentVal) filter.value = currentVal;
+  }
+
+  // 汇总所有有金额的服务项
+  const allItems = [];
+  tours.forEach(t => {
+    if (filter && filter.value && t.id !== filter.value) return;
+    (t.services || []).forEach(s => {
+      const amount = parseFloat(s.amount) || 0;
+      if (amount <= 0) return;
+      const payment = financeData.payments[s.id] || { status: 'unpaid', paid: 0 };
+      allItems.push({
+        tourId: t.id, tourName: t.name, service: s,
+        amount, payment, category: getCostCategory(s.type)
+      });
+    });
+  });
+
+  // 按类别汇总
+  const costByCategory = {};
+  allItems.forEach(item => {
+    if (!costByCategory[item.category]) costByCategory[item.category] = 0;
+    costByCategory[item.category] += item.amount;
+  });
+  const totalCost = Object.values(costByCategory).reduce((a, b) => a + b, 0);
+
+  // 渲染类别卡片
+  let catHtml = '';
+  Object.entries(COST_CATEGORIES).forEach(([key, cat]) => {
+    const amount = costByCategory[key] || 0;
+    const pct = totalCost > 0 ? (amount / totalCost * 100).toFixed(1) : '0.0';
+    catHtml += '<div style="padding:14px;border-radius:10px;background:' + cat.color + '11;border-left:3px solid ' + cat.color + ';">' +
+      '<div style="font-size:22px;margin-bottom:4px;">' + cat.icon + '</div>' +
+      '<div style="font-size:12px;color:var(--gray-600);">' + cat.label + '</div>' +
+      '<div style="font-size:16px;font-weight:600;color:' + cat.color + ';">\u00A5' + amount.toLocaleString() + '</div>' +
+      '<div style="font-size:11px;color:var(--gray-400);">' + pct + '%</div>' +
+    '</div>';
+  });
+  const catContainer = document.getElementById('finCostCategories');
+  if (catContainer) catContainer.innerHTML = catHtml;
+
+  // 按日期排序
+  allItems.sort((a, b) => (a.service.date || '').localeCompare(b.service.date || ''));
+
+  let html = '';
+  if (allItems.length === 0) {
+    html = '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:24px;">\u6682\u65E0\u6210\u672C\u6570\u636E\u3002\u8BF7\u5728\u56E2\u8BE6\u60C5\u4E2D\u6DFB\u52A0\u670D\u52A1\u9879\u5E76\u586B\u5199\u91D1\u989D\u3002</td></tr>';
+  } else {
+    allItems.forEach(item => {
+      const paymentLabels = { unpaid: '\u672A\u4ED8', partial: '\u90E8\u5206\u4ED8', paid: '\u5DF2\u4ED8' };
+      const paymentColors = { unpaid: 'danger', partial: 'warning', paid: 'success' };
+      const cat = COST_CATEGORIES[item.category];
+      html += '<tr>' +
+        '<td>' + item.tourName + '</td>' +
+        '<td><span class="stage-badge stage-new" style="background:' + cat.color + '15;color:' + cat.color + ';">' + cat.icon + ' ' + cat.label + '</span></td>' +
+        '<td>' + (item.service.name || '-') + '</td>' +
+        '<td>' + (item.service.date || '-') + '</td>' +
+        '<td>' + (item.service.supplier || '-') + '</td>' +
+        '<td style="font-weight:600;">\u00A5' + item.amount.toLocaleString() + '</td>' +
+        '<td><span class="stage-badge stage-' + paymentColors[item.payment.status] + '">' + paymentLabels[item.payment.status] + '</span></td>' +
+        '<td>' + (item.service.supplier ? '<button class="btn btn-sm btn-primary" onclick="openPaymentModal(\'' + item.service.id + '\')">\u6807\u8BB0\u4ED8\u6B3E</button>' : '-') + '</td>' +
+        '</tr>';
+    });
+    html += '<tr style="background:var(--gray-50);font-weight:600;">' +
+      '<td colspan="5" style="text-align:right;">\u5408\u8BA1\uFF1A</td>' +
+      '<td>\u00A5' + totalCost.toLocaleString() + '</td>' +
+      '<td colspan="2"></td>' +
+      '</tr>';
+  }
+  document.getElementById('finCostTable').innerHTML = html;
+}
+
+function openPaymentModal(serviceId) {
+  closeDynamicModal('paymentModal');
+  let targetService = null, targetTour = null;
+  for (const t of tours) {
+    const s = (t.services || []).find(sv => sv.id === serviceId);
+    if (s) { targetService = s; targetTour = t; break; }
+  }
+  if (!targetService) return;
+
+  const amount = parseFloat(targetService.amount) || 0;
+  const payment = financeData.payments[serviceId] || { status: 'unpaid', paid: 0 };
+
+  const html = '<div class="modal-overlay" id="paymentModal" style="display:flex;">' +
+    '<div class="modal" style="max-width:480px;">' +
+      '<div class="modal-header">' +
+        '<h3>\u6807\u8BB0\u4ED8\u6B3E</h3>' +
+        '<button class="modal-close" onclick="closeDynamicModal(\'paymentModal\')">&times;</button>' +
+      '</div>' +
+      '<div style="background:var(--gray-50);padding:12px;border-radius:6px;margin-bottom:16px;font-size:13px;">' +
+        '<div><strong>\u56E2\u540D\uFF1A</strong>' + targetTour.name + '</div>' +
+        '<div><strong>\u670D\u52A1\u9879\uFF1A</strong>' + (targetService.name || '-') + '</div>' +
+        '<div><strong>\u4F9B\u5E94\u5546\uFF1A</strong>' + (targetService.supplier || '-') + '</div>' +
+        '<div><strong>\u5E94\u4ED8\u91D1\u989D\uFF1A</strong><span style="color:var(--primary);font-weight:600;">\u00A5' + amount.toLocaleString() + '</span></div>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u5DF2\u4ED8\u91D1\u989D (\u00A5)</label>' +
+        '<input type="number" id="payAmount" class="form-control" value="' + (payment.paid || 0) + '" step="0.01" max="' + amount + '">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u4ED8\u6B3E\u72B6\u6001</label>' +
+        '<select id="payStatus" class="form-control">' +
+          '<option value="unpaid"' + (payment.status === 'unpaid' ? ' selected' : '') + '>\u672A\u4ED8</option>' +
+          '<option value="partial"' + (payment.status === 'partial' ? ' selected' : '') + '>\u90E8\u5206\u4ED8</option>' +
+          '<option value="paid"' + (payment.status === 'paid' ? ' selected' : '') + '>\u5DF2\u4ED8\u6E05</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u4ED8\u6B3E\u65E5\u671F</label>' +
+        '<input type="date" id="payDate" class="form-control" value="' + (payment.date || new Date().toISOString().slice(0, 10)) + '">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u5907\u6CE8</label>' +
+        '<input type="text" id="payNote" class="form-control" value="' + (payment.note || '') + '" placeholder="\u53EF\u9009">' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">' +
+        '<button class="btn btn-secondary" onclick="closeDynamicModal(\'paymentModal\')">\u53D6\u6D88</button>' +
+        '<button class="btn btn-primary" onclick="savePayment(\'' + serviceId + '\', ' + amount + ')">\u4FDD\u5B58</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function savePayment(serviceId, totalAmount) {
+  const paid = parseFloat(document.getElementById('payAmount').value) || 0;
+  let status = document.getElementById('payStatus').value;
+  const date = document.getElementById('payDate').value;
+  const note = document.getElementById('payNote').value;
+
+  if (paid >= totalAmount) status = 'paid';
+  else if (paid > 0) status = 'partial';
+  else status = 'unpaid';
+
+  financeData.payments[serviceId] = { status, paid, date, note };
+  saveData();
+  closeDynamicModal('paymentModal');
+  renderFinance();
+  showToast('\u4ED8\u6B3E\u72B6\u6001\u5DF2\u66F4\u65B0', 'success');
+}
+
+// ============ 完团报销 ============
+function renderFinanceReimburse() {
+  const reimbursements = (financeData.reimbursements || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  let html = '';
+  if (reimbursements.length === 0) {
+    html = '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:24px;">\u6682\u65E0\u62A5\u9500\u8BB0\u5F55\uFF0C\u70B9\u51FB\u53F3\u4E0A\u89D2\u201C\u7533\u8BF7\u62A5\u9500\u201D\u5F00\u59CB</td></tr>';
+  } else {
+    const statusLabels = { pending: '\u5F85\u5BA1\u6838', approved: '\u5DF2\u6279\u51C6', rejected: '\u5DF2\u9A73\u56DE', paid: '\u5DF2\u6253\u6B3E' };
+    const statusColors = { pending: 'warning', approved: 'success', rejected: 'danger', paid: 'success' };
+    reimbursements.forEach(r => {
+      const tour = tours.find(t => t.id === r.tourId);
+      html += '<tr>' +
+        '<td style="font-family:monospace;font-size:12px;">' + r.id + '</td>' +
+        '<td>' + (tour ? tour.name : '<span style="color:var(--gray-400);">\u5DF2\u5220\u9664\u56E2</span>') + '</td>' +
+        '<td>' + (r.applicant || '-') + '</td>' +
+        '<td>' + (r.applyDate || '-') + '</td>' +
+        '<td style="font-weight:600;">\u00A5' + (parseFloat(r.amount) || 0).toLocaleString() + '</td>' +
+        '<td><span class="stage-badge stage-' + (statusColors[r.status] || 'new') + '">' + (statusLabels[r.status] || r.status) + '</span></td>' +
+        '<td style="display:flex;gap:4px;flex-wrap:wrap;">' +
+          (r.status === 'pending' ? '<button class="btn btn-sm btn-success" onclick="updateReimburseStatus(\'' + r.id + '\', \'approved\')">\u6279\u51C6</button><button class="btn btn-sm btn-danger" onclick="updateReimburseStatus(\'' + r.id + '\', \'rejected\')">\u9A73\u56DE</button>' : '') +
+          (r.status === 'approved' ? '<button class="btn btn-sm btn-primary" onclick="updateReimburseStatus(\'' + r.id + '\', \'paid\')">\u786E\u8BA4\u6253\u6B3E</button>' : '') +
+          '<button class="btn btn-sm btn-secondary" onclick="viewReimburseDetail(\'' + r.id + '\')">\u67E5\u770B</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="deleteReimburse(\'' + r.id + '\')">\u5220\u9664</button>' +
+        '</td>' +
+      '</tr>';
+    });
+  }
+  document.getElementById('finReimburseTable').innerHTML = html;
+}
+
+function openReimburseModal() {
+  closeDynamicModal('reimburseModal');
+  // 可选的团（优先显示已完团和出团中的）
+  const eligibleTours = tours.map(t => {
+    const stage = getTourStage(t);
+    return { tour: t, stage };
+  }).sort((a, b) => {
+    const order = { completed: 0, ongoing: 1, final: 2, audit: 3, review: 4, new: 5 };
+    return (order[a.stage] || 9) - (order[b.stage] || 9);
+  });
+
+  const tourOptions = eligibleTours.map(({ tour: t, stage }) => {
+    const stageLabels = { new: '\u65B0\u5EFA', review: '\u590D\u6838\u4E2D', audit: '\u5BA1\u6838\u4E2D', final: '\u5F85\u51FA\u56E2', ongoing: '\u51FA\u56E2\u4E2D', completed: '\u5DF2\u5B8C\u6210' };
+    return '<option value="' + t.id + '">' + t.name + '\uFF08' + (t.client || '-') + '\uFF09- ' + (stageLabels[stage] || stage) + '</option>';
+  }).join('');
+
+  const html = '<div class="modal-overlay" id="reimburseModal" style="display:flex;">' +
+    '<div class="modal" style="max-width:640px;">' +
+      '<div class="modal-header">' +
+        '<h3>\u7533\u8BF7\u62A5\u9500</h3>' +
+        '<button class="modal-close" onclick="closeDynamicModal(\'reimburseModal\')">&times;</button>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u9009\u62E9\u56E2 <span style="color:var(--danger);">*</span></label>' +
+        '<select id="reimTour" class="form-control" onchange="updateReimbursePreview()"><option value="">\u8BF7\u9009\u62E9</option>' + tourOptions + '</select>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u7533\u8BF7\u4EBA <span style="color:var(--danger);">*</span></label>' +
+        '<input type="text" id="reimApplicant" class="form-control" placeholder="\u8BA1\u8C03\u59D3\u540D">' +
+      '</div>' +
+      '<div id="reimPreview" style="min-height:60px;"></div>' +
+      '<div class="form-group">' +
+        '<label>\u62A5\u9500\u91D1\u989D (\u00A5) <span style="color:var(--danger);">*</span></label>' +
+        '<input type="number" id="reimAmount" class="form-control" placeholder="0.00" step="0.01">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>\u5907\u6CE8</label>' +
+        '<textarea id="reimNote" class="form-control" rows="2" placeholder="\u53EF\u9009\uFF0C\u5982\u62A5\u9500\u8BF4\u660E\u3001\u9644\u4EF6\u5217\u8868\u7B49"></textarea>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">' +
+        '<button class="btn btn-secondary" onclick="closeDynamicModal(\'reimburseModal\')">\u53D6\u6D88</button>' +
+        '<button class="btn btn-primary" onclick="saveReimburse()">\u63D0\u4EA4\u62A5\u9500</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function updateReimbursePreview() {
+  const tourId = document.getElementById('reimTour').value;
+  const previewEl = document.getElementById('reimPreview');
+  if (!tourId) { previewEl.innerHTML = ''; return; }
+
+  const tour = tours.find(t => t.id === tourId);
+  if (!tour) { previewEl.innerHTML = ''; return; }
+
+  const services = (tour.services || []).filter(s => {
+    const amt = parseFloat(s.amount) || 0;
+    return amt > 0;
+  });
+
+  // 按类别汇总
+  const catSummary = {};
+  services.forEach(s => {
+    const cat = getCostCategory(s.type);
+    if (!catSummary[cat]) catSummary[cat] = { amount: 0, count: 0 };
+    catSummary[cat].amount += parseFloat(s.amount) || 0;
+    catSummary[cat].count++;
+  });
+
+  const totalCost = services.reduce((s, sv) => s + (parseFloat(sv.amount) || 0), 0);
+  const revenue = getTourRevenue(tour.id);
+  const profit = revenue - totalCost;
+
+  let html = '<div style="background:var(--gray-50);padding:14px;border-radius:8px;margin-bottom:12px;">' +
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">\u6210\u672C\u9884\u89C8\uFF08\u6309\u7C7B\u522B\uFF09</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:10px;">';
+
+  Object.entries(COST_CATEGORIES).forEach(([key, cat]) => {
+    const data = catSummary[key];
+    if (!data) return;
+    html += '<div style="padding:8px;border-radius:6px;background:white;border-left:3px solid ' + cat.color + ';">' +
+      '<div style="font-size:11px;color:var(--gray-600);">' + cat.icon + ' ' + cat.label + ' (' + data.count + '\u9879)</div>' +
+      '<div style="font-size:13px;font-weight:600;color:' + cat.color + ';">\u00A5' + data.amount.toLocaleString() + '</div>' +
+    '</div>';
+  });
+
+  html += '</div>' +
+    '<div style="display:flex;gap:16px;font-size:13px;padding-top:8px;border-top:1px solid var(--gray-200);">' +
+      '<span>\u56E2\u8D39\u6536\u5165\uFF1A<span style="font-weight:600;color:var(--success);">\u00A5' + revenue.toLocaleString() + '</span></span>' +
+      '<span>\u6210\u672C\u5408\u8BA1\uFF1A<span style="font-weight:600;color:var(--danger);">\u00A5' + totalCost.toLocaleString() + '</span></span>' +
+      '<span>\u6BDB\u5229\uFF1A<span style="font-weight:600;color:' + (profit >= 0 ? 'var(--success)' : 'var(--danger)') + ';">\u00A5' + profit.toLocaleString() + '</span></span>' +
+    '</div>' +
+  '</div>';
+
+  // 自动填充报销金额
+  const amountInput = document.getElementById('reimAmount');
+  if (amountInput && !amountInput.value) {
+    amountInput.value = totalCost;
+  }
+
+  previewEl.innerHTML = html;
+}
+
+function saveReimburse() {
+  const tourId = document.getElementById('reimTour').value;
+  const applicant = document.getElementById('reimApplicant').value.trim();
+  const amount = parseFloat(document.getElementById('reimAmount').value);
+  const note = document.getElementById('reimNote').value.trim();
+
+  if (!tourId) return showToast('\u8BF7\u9009\u62E9\u56E2', 'error');
+  if (!applicant) return showToast('\u8BF7\u586B\u5199\u7533\u8BF7\u4EBA', 'error');
+  if (!amount || amount <= 0) return showToast('\u8BF7\u8F93\u5165\u6709\u6548\u62A5\u9500\u91D1\u989D', 'error');
+
+  if (!financeData.reimbursements) financeData.reimbursements = [];
+  const now = new Date();
+  const reimb = {
+    id: 'BX' + now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + '-' + String(financeData.reimbursements.length + 1).padStart(3, '0'),
+    tourId, applicant, amount, note,
+    applyDate: now.toISOString().slice(0, 10),
+    status: 'pending',
+    createdAt: now.toISOString()
+  };
+  financeData.reimbursements.push(reimb);
+  saveData();
+  closeDynamicModal('reimburseModal');
+  renderFinance();
+  showToast('\u62A5\u9500\u7533\u8BF7\u5DF2\u63D0\u4EA4\uFF0C\u5F85\u5BA1\u6838', 'success');
+}
+
+function deleteReimburse(id) {
+  if (!confirm('\u786E\u5B9A\u8981\u5220\u9664\u8FD9\u6761\u62A5\u9500\u8BB0\u5F55\u5417\uFF1F')) return;
+  financeData.reimbursements = financeData.reimbursements.filter(r => r.id !== id);
+  saveData();
+  renderFinance();
+  showToast('\u5DF2\u5220\u9664', 'success');
+}
+
+function updateReimburseStatus(id, status) {
+  const reimb = financeData.reimbursements.find(r => r.id === id);
+  if (!reimb) return;
+  const statusLabels = { approved: '\u6279\u51C6', rejected: '\u9A73\u56DE', paid: '\u6253\u6B3E' };
+  if (!confirm('\u786E\u8BA4' + statusLabels[status] + '\u8FD9\u6761\u62A5\u9500\u5417\uFF1F')) return;
+  reimb.status = status;
+  reimb.processedAt = new Date().toISOString();
+  saveData();
+  renderFinance();
+  showToast('\u62A5\u9500\u72B6\u6001\u5DF2\u66F4\u65B0', 'success');
+}
+
+function viewReimburseDetail(id) {
+  const reimb = financeData.reimbursements.find(r => r.id === id);
+  if (!reimb) return;
+  const tour = tours.find(t => t.id === reimb.tourId);
+  const services = tour ? (tour.services || []).filter(s => (parseFloat(s.amount) || 0) > 0) : [];
+
+  // 按类别汇总
+  const catSummary = {};
+  services.forEach(s => {
+    const cat = getCostCategory(s.type);
+    if (!catSummary[cat]) catSummary[cat] = { amount: 0, count: 0, items: [] };
+    catSummary[cat].amount += parseFloat(s.amount) || 0;
+    catSummary[cat].count++;
+    catSummary[cat].items.push(s);
+  });
+
+  const statusLabels = { pending: '\u5F85\u5BA1\u6838', approved: '\u5DF2\u6279\u51C6', rejected: '\u5DF2\u9A73\u56DE', paid: '\u5DF2\u6253\u6B3E' };
+
+  let detailHtml = '<div style="margin-bottom:16px;">' +
+    '<div style="display:flex;gap:16px;font-size:13px;margin-bottom:8px;">' +
+      '<span><strong>\u62A5\u9500\u5355\u53F7\uFF1A</strong>' + reimb.id + '</span>' +
+      '<span><strong>\u72B6\u6001\uFF1A</strong>' + (statusLabels[reimb.status] || reimb.status) + '</span>' +
+    '</div>' +
+    '<div style="display:flex;gap:16px;font-size:13px;margin-bottom:8px;">' +
+      '<span><strong>\u7533\u8BF7\u4EBA\uFF1A</strong>' + (reimb.applicant || '-') + '</span>' +
+      '<span><strong>\u7533\u8BF7\u65E5\u671F\uFF1A</strong>' + (reimb.applyDate || '-') + '</span>' +
+      '<span><strong>\u62A5\u9500\u91D1\u989D\uFF1A</strong><span style="color:var(--primary);font-weight:600;">\u00A5' + (parseFloat(reimb.amount) || 0).toLocaleString() + '</span></span>' +
+    '</div>';
+  if (reimb.note) detailHtml += '<div style="font-size:13px;margin-bottom:8px;"><strong>\u5907\u6CE8\uFF1A</strong>' + reimb.note + '</div>';
+  detailHtml += '</div>';
+
+  // 成本明细
+  if (services.length > 0) {
+    detailHtml += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">\u6210\u672C\u660E\u7EC6\uFF08\u6309\u7C7B\u522B\uFF09</div>';
+    Object.entries(COST_CATEGORIES).forEach(([key, cat]) => {
+      const data = catSummary[key];
+      if (!data) return;
+      detailHtml += '<div style="margin-bottom:10px;">' +
+        '<div style="font-size:12px;font-weight:600;color:' + cat.color + ';margin-bottom:4px;">' + cat.icon + ' ' + cat.label + '\uFF08' + data.count + '\u9879\uFF0C\u5408\u8BA1 \u00A5' + data.amount.toLocaleString() + '\uFF09</div>' +
+        '<table class="data-table" style="font-size:12px;"><tbody>';
+      data.items.forEach(s => {
+        const payment = financeData.payments[s.id] || { status: 'unpaid', paid: 0 };
+        const paymentLabels = { unpaid: '\u672A\u4ED8', partial: '\u90E8\u5206\u4ED8', paid: '\u5DF2\u4ED8' };
+        detailHtml += '<tr><td>' + (s.name || '-') + '</td><td>' + (s.date || '-') + '</td><td>' + (s.supplier || '-') + '</td><td style="font-weight:600;">\u00A5' + (parseFloat(s.amount) || 0).toLocaleString() + '</td><td>' + paymentLabels[payment.status] + '</td></tr>';
+      });
+      detailHtml += '</tbody></table></div>';
+    });
+  }
+
+  closeDynamicModal('reimburseDetailModal');
+  const html = '<div class="modal-overlay" id="reimburseDetailModal" style="display:flex;">' +
+    '<div class="modal" style="max-width:720px;">' +
+      '<div class="modal-header">' +
+        '<h3>\u62A5\u9500\u8BE6\u60C5</h3>' +
+        '<button class="modal-close" onclick="closeDynamicModal(\'reimburseDetailModal\')">&times;</button>' +
+      '</div>' +
+      detailHtml +
+      '<div style="display:flex;justify-content:flex-end;margin-top:16px;">' +
+        '<button class="btn btn-secondary" onclick="closeDynamicModal(\'reimburseDetailModal\')">\u5173\u95ED</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function exportFinanceReport() {
+  let csv = '\uFEFF';
+  // Sheet 1: 收入明细
+  csv += '\u6536\u5165\u660E\u7EC6\n\u56E2\u540D,\u9879\u76EE,\u91D1\u989D,\u5230\u8D26\u65E5\u671F,\u6536\u6B3E\u65B9\u5F0F,\u72B6\u6001\n';
+  (financeData.revenues || []).forEach(r => {
+    const tour = tours.find(t => t.id === r.tourId);
+    csv += (tour ? tour.name : '') + ',' + (r.item || '') + ',' + (r.amount || 0) + ',' + (r.date || '') + ',' + (r.method || '') + ',' + (r.status || '') + '\n';
+  });
+
+  // Sheet 2: 成本明细（按类别）
+  csv += '\n\n\u6210\u672C\u660E\u7EC6\uFF08\u6309\u7C7B\u522B\uFF09\n\u56E2\u540D,\u7C7B\u522B,\u9879\u76EE\u540D\u79F0,\u65E5\u671F,\u4F9B\u5E94\u5546,\u91D1\u989D,\u4ED8\u6B3E\u72B6\u6001\n';
+  tours.forEach(t => {
+    (t.services || []).forEach(s => {
+      const amount = parseFloat(s.amount) || 0;
+      if (amount <= 0) return;
+      const cat = COST_CATEGORIES[getCostCategory(s.type)];
+      const payment = financeData.payments[s.id] || { status: 'unpaid' };
+      const paymentLabels = { unpaid: '\u672A\u4ED8', partial: '\u90E8\u5206\u4ED8', paid: '\u5DF2\u4ED8' };
+      csv += t.name + ',' + (cat ? cat.label : s.type) + ',' + (s.name || '') + ',' + (s.date || '') + ',' + (s.supplier || '') + ',' + amount + ',' + (paymentLabels[payment.status] || payment.status) + '\n';
+    });
+  });
+
+  // Sheet 3: 报销记录
+  csv += '\n\n\u62A5\u9500\u8BB0\u5F55\n\u62A5\u9500\u5355\u53F7,\u56E2\u540D,\u7533\u8BF7\u4EBA,\u7533\u8BF7\u65E5\u671F,\u62A5\u9500\u91D1\u989D,\u72B6\u6001,\u5907\u6CE8\n';
+  (financeData.reimbursements || []).forEach(r => {
+    const tour = tours.find(t => t.id === r.tourId);
+    const statusLabels = { pending: '\u5F85\u5BA1\u6838', approved: '\u5DF2\u6279\u51C6', rejected: '\u5DF2\u9A73\u56DE', paid: '\u5DF2\u6253\u6B3E' };
+    csv += r.id + ',' + (tour ? tour.name : '') + ',' + (r.applicant || '') + ',' + (r.applyDate || '') + ',' + (r.amount || 0) + ',' + (statusLabels[r.status] || r.status) + ',' + (r.note || '') + '\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '\u62A5\u8D26\u62A5\u8868_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('\u62A5\u8868\u5DF2\u5BFC\u51FA', 'success');
+}
+
+function renderSettings() {
+  const totalRevenue = tours.reduce((s, t) => s + (parseFloat(t.totalAmount) || 0), 0);
+  const totalServiceItems = tours.reduce((s, t) => s + (t.serviceItems?.length || 0), 0);
+  document.getElementById('dataStats').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+      <div style="padding:12px;background:var(--gray-50);border-radius:8px;">
+        <div style="font-size:12px;color:var(--gray-600);">团数量</div>
+        <div style="font-size:24px;font-weight:500;">${tours.length}</div>
+      </div>
+      <div style="padding:12px;background:var(--gray-50);border-radius:8px;">
+        <div style="font-size:12px;color:var(--gray-600);">服务项总数</div>
+        <div style="font-size:24px;font-weight:500;">${totalServiceItems}</div>
+      </div>
+      <div style="padding:12px;background:var(--gray-50);border-radius:8px;">
+        <div style="font-size:12px;color:var(--gray-600);">供应商数量</div>
+        <div style="font-size:24px;font-weight:500;">${suppliers.length}</div>
+      </div>
+      <div style="padding:12px;background:var(--gray-50);border-radius:8px;">
+        <div style="font-size:12px;color:var(--gray-600);">累计金额</div>
+        <div style="font-size:24px;font-weight:500;">¥${totalRevenue.toLocaleString()}</div>
+      </div>
+    </div>
+  `;
+}
+
+function exportAllData() {
+  const data = { tours, suppliers, financeData, exportedAt: new Date().toISOString(), version: '2.1' };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `入境游数据备份_${new Date().toISOString().slice(0,10)}.json`;
+  link.click();
+  showToast('已导出数据');
+}
+
+function importAllData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!confirm('导入将覆盖当前数据，确定继续吗？建议先导出备份。')) {
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      tours = data.tours || [];
+      suppliers = data.suppliers || [];
+      financeData = data.financeData || { revenues: [], payments: {}, reimbursements: [] };
+      saveData();
+      switchPage('dashboard');
+      showToast('数据已导入');
+    } catch (err) {
+      showToast('导入失败：文件格式错误', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAllData() {
+  if (!confirm('\u786E\u5B9A\u8981\u6E05\u7A7A\u6240\u6709\u6570\u636E\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u6062\u590D\uFF01')) return;
+  if (!confirm('\u6700\u540E\u786E\u8BA4\uFF1A\u6240\u6709\u56E2\u3001\u4F9B\u5E94\u5546\u548C\u62A5\u8D26\u6570\u636E\u5C06\u88AB\u6C38\u4E45\u5220\u9664\uFF01')) return;
+  tours = [];
+  suppliers = [];
+  financeData = { revenues: [], payments: {}, reimbursements: [] };
+  saveData();
+  switchPage('dashboard');
+  showToast('\u6240\u6709\u6570\u636E\u5DF2\u6E05\u7A7A', 'warning');
+}
+
+function exportAllTours() {
+  if (tours.length === 0) { showToast('没有团可导出', 'warning'); return; }
+  let csv = '\uFEFF';
+  csv += '团名,客户,人数,路线,出团日期,结束日期,订单金额,定金,完成度,服务项数\r\n';
+  tours.forEach(t => {
+    const progress = getTourProgress(t);
+    csv += `${t.tourName},${t.clientName},${t.groupSize},${t.routeInfo},${t.startDate},${t.endDate},${t.totalAmount},${t.depositAmount},${progress}%,${t.serviceItems?.length || 0}\r\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `所有团_${new Date().toISOString().slice(0,10)}.csv`;
+  link.click();
+  showToast('已导出CSV');
+}
+
+// ============ Auth & User Management ============
+
+function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  if (!username || !password) {
+    errEl.textContent = '请输入用户名和密码';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  })
+  .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+  .then(({ ok, data }) => {
+    if (!ok) {
+      errEl.textContent = data.error || '登录失败';
+      errEl.style.display = 'block';
+      return;
+    }
+    authToken = data.token;
+    currentUser = data.user;
+    sessionStorage.setItem('authToken', authToken);
+    sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+    showApp();
+  })
+  .catch(() => {
+    errEl.textContent = '网络错误，请检查服务器是否运行';
+    errEl.style.display = 'block';
+  });
+}
+
+function doLogout() {
+  if (!confirm('确定要退出登录吗？')) return;
+  authToken = null;
+  currentUser = null;
+  sessionStorage.removeItem('authToken');
+  sessionStorage.removeItem('currentUser');
+  sessionStorage.removeItem(STORAGE_KEY);
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('sidebarUser').style.display = 'none';
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('sidebarUser').style.display = 'flex';
+
+  // 显示用户信息
+  document.getElementById('userName').textContent = currentUser.displayName;
+  document.getElementById('userRole').textContent = currentUser.role === 'admin' ? '管理员' : '普通成员';
+  document.getElementById('userAvatar').textContent = currentUser.displayName.charAt(0).toUpperCase();
+
+  // 管理员显示用户管理卡片
+  document.getElementById('userMgmtCard').style.display = currentUser.role === 'admin' ? 'block' : 'none';
+  document.getElementById('seedDemoBtn').style.display = currentUser.role === 'admin' ? 'inline-block' : 'none';
+
+  // 从服务器加载数据
+  loadFromServer().then(() => {
+    switchPage('dashboard');
+    startAutoRefresh();
+    if (currentUser.role === 'admin') loadUserList();
+  });
+}
+
+function checkExistingSession() {
+  const token = sessionStorage.getItem('authToken');
+  const userStr = sessionStorage.getItem('currentUser');
+  if (token && userStr) {
+    // 验证 token 是否还有效
+    fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(r => {
+      if (r.ok) {
+        authToken = token;
+        currentUser = JSON.parse(userStr);
+        showApp();
+      } else {
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('currentUser');
+      }
+    })
+    .catch(() => {});
+  }
+}
+
+// --- 用户管理 ---
+function loadUserList() {
+  fetch('/api/users', { headers: { 'Authorization': 'Bearer ' + authToken } })
+  .then(r => r.json())
+  .then(users => {
+    const tbody = document.getElementById('userTableBody');
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td>${u.username}</td>
+        <td>${u.displayName}</td>
+        <td><span class="role-badge ${u.role}">${u.role === 'admin' ? '管理员' : '普通成员'}</span></td>
+        <td>${u.createdAt || '-'}</td>
+        <td>${u.id === currentUser.id ? '<span style="color:var(--gray-400)">当前用户</span>' :
+          `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.displayName}')">删除</button>`}</td>
+      </tr>
+    `).join('');
+  });
+}
+
+function openAddUserModal() {
+  document.getElementById('addUserModal').style.display = 'flex';
+  document.getElementById('newUsername').value = '';
+  document.getElementById('newDisplayName').value = '';
+  document.getElementById('newUserPassword').value = '';
+  document.getElementById('newUserRole').value = 'user';
+}
+
+function addUser() {
+  const username = document.getElementById('newUsername').value.trim();
+  const displayName = document.getElementById('newDisplayName').value.trim();
+  const password = document.getElementById('newUserPassword').value;
+  const role = document.getElementById('newUserRole').value;
+  if (!username || !displayName || !password) {
+    showToast('请填写完整信息', 'error'); return;
+  }
+  fetch('/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+    body: JSON.stringify({ username, displayName, password, role })
+  })
+  .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+  .then(({ ok, data }) => {
+    if (!ok) { showToast(data.error || '创建失败', 'error'); return; }
+    showToast('用户创建成功');
+    document.getElementById('addUserModal').style.display = 'none';
+    loadUserList();
+  });
+}
+
+function deleteUser(id, name) {
+  if (!confirm(`确定要删除用户「${name}」吗？`)) return;
+  fetch('/api/users/' + id, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + authToken }
+  })
+  .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+  .then(({ ok, data }) => {
+    if (!ok) { showToast(data.error || '删除失败', 'error'); return; }
+    showToast('用户已删除');
+    loadUserList();
+  });
+}
+
+function changePassword() {
+  const oldPwd = document.getElementById('oldPassword').value;
+  const newPwd = document.getElementById('newPassword').value;
+  if (!oldPwd || !newPwd) { showToast('请填写原密码和新密码', 'error'); return; }
+  if (newPwd.length < 6) { showToast('新密码至少6位', 'error'); return; }
+  fetch('/api/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+    body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd })
+  })
+  .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+  .then(({ ok, data }) => {
+    if (!ok) { showToast(data.error || '修改失败', 'error'); return; }
+    showToast('密码修改成功');
+    document.getElementById('oldPassword').value = '';
+    document.getElementById('newPassword').value = '';
+  });
+}
+
+function seedDemoData() {
+  if (!confirm('将注入4个演示团和报账数据，覆盖当前数据。确定继续吗？')) return;
+  const demoData = {
+    tours: [
+      { id: 'demo1', name: 'LeAnn Wong 团', client: 'LeAnn_Wong', people: 4, startDate: '2026-07-02', endDate: '2026-07-15',
+        services: [
+          { id: 'd1s1', type: 'guide', name: '重庆英语导游', date: '2026-07-02', amount: 900, supplier: '重庆张导' },
+          { id: 'd1s2', type: 'train', name: 'G2425 重庆东→武隆南', date: '2026-07-03', amount: 282, supplier: '12306' },
+          { id: 'd1s3', type: 'train', name: 'G3764 武隆南→重庆北', date: '2026-07-04', amount: 468, supplier: '12306' },
+          { id: 'd1s4', type: 'ticket', name: '芙蓉洞门票×4', date: '2026-07-04', amount: 392, supplier: '景区' },
+          { id: 'd1s5', type: 'train', name: 'G3424 重庆北→成都东', date: '2026-07-05', amount: 1040, supplier: '12306' },
+          { id: 'd1s6', type: 'car', name: '7座包车·熊猫谷都江堰', date: '2026-07-07', amount: 1150, supplier: '成都李师傅' },
+          { id: 'd1s7', type: 'ticket', name: '熊猫谷门票', date: '2026-07-07', amount: 165, supplier: '景区' },
+          { id: 'd1s8', type: 'train', name: 'D2264 成都东→重庆北', date: '2026-07-10', amount: 760, supplier: '12306' },
+          { id: 'd1s9', type: 'car', name: '厦门7座接机', date: '2026-07-10', amount: 390, supplier: '厦门王司机' },
+          { id: 'd1s10', type: 'car', name: '7座包车·漳州福建', date: '2026-07-13', amount: 1230, supplier: '漳州陈师傅' },
+          { id: 'd1s11', type: 'car', name: '厦门7座送机', date: '2026-07-15', amount: 390, supplier: '厦门王司机' },
+        ]
+      },
+      { id: 'demo2', name: 'Smith 家庭团', client: 'Smith Family', people: 5, startDate: '2026-07-20', endDate: '2026-07-28',
+        services: [
+          { id: 'd2s1', type: 'hotel', name: '上海希尔顿', date: '2026-07-20', amount: 3200, supplier: '希尔顿酒店' },
+          { id: 'd2s2', type: 'car', name: '7座包车8天', date: '2026-07-20', amount: 6400, supplier: '上海包车公司' },
+          { id: 'd2s3', type: 'guide', name: '英语导游8天', date: '2026-07-20', amount: 7200, supplier: '上海外导' },
+        ]
+      },
+      { id: 'demo3', name: 'Johnson 商务团', client: 'Johnson Corp', people: 3, startDate: '2026-07-10', endDate: '2026-07-12',
+        services: [
+          { id: 'd3s1', type: 'flight', name: '北京→上海 CA1501', date: '2026-07-10', amount: 2400, supplier: '国航' },
+          { id: 'd3s2', type: 'hotel', name: '北京酒店2晚', date: '2026-07-10', amount: 1800, supplier: '国贸大酒店' },
+        ]
+      },
+      { id: 'demo4', name: 'Tanaka 文化体验团', client: '田中夫妇', people: 2, startDate: '2026-08-05', endDate: '2026-08-12',
+        services: [
+          { id: 'd4s1', type: 'guide', name: '日语导游', date: '2026-08-05', amount: 5400, supplier: '北京日导' },
+          { id: 'd4s2', type: 'car', name: '5座包车7天', date: '2026-08-05', amount: 4900, supplier: '北京包车' },
+        ]
+      }
+    ],
+    suppliers: [],
+    financeData: {
+      revenues: [
+        { id: 'r1', tourId: 'demo1', item: '定金', amount: 800, date: '2026-06-15', method: '银行转账', status: 'received' },
+        { id: 'r2', tourId: 'demo1', item: '尾款', amount: 3202, date: '2026-07-01', method: '银行转账', status: 'received' },
+        { id: 'r3', tourId: 'demo2', item: '团费', amount: 28000, date: '2026-06-20', method: '银行转账', status: 'received' },
+        { id: 'r4', tourId: 'demo2', item: '加项', amount: 3000, date: '2026-07-15', method: 'PayPal', status: 'pending' },
+        { id: 'r5', tourId: 'demo3', item: '团费', amount: 12000, date: '2026-07-05', method: '银行转账', status: 'received' },
+      ],
+      payments: {
+        'd1s1': { status: 'paid', paid: 900, date: '2026-07-03' },
+        'd1s2': { status: 'paid', paid: 282, date: '2026-06-25' },
+        'd1s3': { status: 'paid', paid: 468, date: '2026-06-25' },
+        'd1s6': { status: 'partial', paid: 500, date: '2026-07-10' },
+        'd1s9': { status: 'unpaid', paid: 0 },
+      },
+      reimbursements: [
+        { id: 'BX20260701-001', tourId: 'demo3', applicant: '张计调', amount: 4200, applyDate: '2026-07-13', status: 'approved', note: 'Johnson团完团报销，含机票+酒店', createdAt: '2026-07-13T10:00:00Z', processedAt: '2026-07-14T09:00:00Z' },
+        { id: 'BX20260702-001', tourId: 'demo1', applicant: '李计调', amount: 6167, applyDate: '2026-07-02', status: 'pending', note: 'LeAnn团成本报销', createdAt: '2026-07-02T08:00:00Z' },
+      ]
+    }
+  };
+  fetch('/api/seed-demo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+    body: JSON.stringify({ data: demoData })
+  })
+  .then(r => r.json())
+  .then(result => {
+    if (result.success) {
+      showToast('演示数据已注入');
+      loadFromServer().then(() => switchPage('dashboard'));
+    } else {
+      showToast('注入失败', 'error');
+    }
+  });
+}
+
+// ============ Init ============
+loadData();  // 从 sessionStorage 恢复缓存
+checkExistingSession();  // 检查是否已登录
+switchPage('dashboard');
+</script>
+
+</body>
+</html>
