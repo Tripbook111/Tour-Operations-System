@@ -214,11 +214,20 @@ app.post('/api/seed-demo', requireAuth, requireAdmin, (req, res) => {
 });
 
 // ============ Static Files ============
+// 兼容两种部署习惯：index.html 可以放在 public/ 也可以放在根目录
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname)));
 
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api/')) {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    const candidates = [
+      path.join(__dirname, 'public', 'index.html'),
+      path.join(__dirname, 'index.html')
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) return res.sendFile(p);
+    }
+    res.status(404).send('index.html not found');
   }
 });
 
