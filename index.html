@@ -476,6 +476,7 @@
     font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 </head>
 <body>
 
@@ -983,6 +984,27 @@
 
     <!-- Step 2: 添加服务 -->
     <div id="step2" class="step-content" style="display:none;">
+      <div class="card" style="border:1px dashed var(--primary);background:#f7faff;margin-bottom:16px;">
+        <div class="card-title">⚡ 上传服务清单（Word），自动拆分</div>
+        <div class="card-body">
+          <p style="color:var(--gray-600);font-size:12px;margin-bottom:10px;">
+            直接上传规划师发来的服务清单 <strong>.docx</strong>（或 .txt），系统自动识别客户信息、酒店、火车票、门票、司导，
+            并生成执行清单。识别结果可继续在下方手动添加/删除调整。
+          </p>
+          <div id="uploadZone" style="border:2px dashed #c9d6f0;border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;"
+               onmouseover="this.style.background='#eef3ff'" onmouseout="this.style.background='transparent'"
+               onclick="document.getElementById('serviceListFile').click()">
+            <div style="font-size:28px;margin-bottom:6px;">&#128196;</div>
+            <div style="font-size:14px;font-weight:500;">点击上传 或 拖入服务清单文件</div>
+            <div style="font-size:12px;color:var(--gray-600);margin-top:4px;">支持 .docx / .txt（.doc 请先另存为 .docx）</div>
+            <input id="serviceListFile" type="file" accept=".docx,.txt" style="display:none;"
+                   onchange="handleServiceListFile(this.files && this.files[0]);this.value='';" />
+          </div>
+          <div id="parseResult" style="display:none;margin-top:10px;font-size:13px;"></div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:8px;">提示：也可在下方手动添加服务。识别不完整的行会单独列出，可手动补充。</div>
+        </div>
+      </div>
+
       <p style="color:var(--gray-600);font-size:12px;margin-bottom:12px;">
         选择服务类型，填写详情后点击添加。系统会自动生成对应的倒排检查项。
       </p>
@@ -1975,6 +1997,8 @@ function openNewTourModal() {
   document.querySelectorAll('.service-type-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('serviceForm').style.display = 'none';
   document.getElementById('addedServicesList').innerHTML = '';
+  const pr = document.getElementById('parseResult');
+  if (pr) { pr.style.display = 'none'; pr.innerHTML = ''; }
   goToStep(1);
   document.getElementById('newTourModal').style.display = 'flex';
 }
@@ -2213,6 +2237,532 @@ function saveTour() {
   closeModal('newTourModal');
   switchPage('dashboard');
 }
+
+
+// ============================================================
+//  ⚡ 上传服务清单 → 自动拆分（新增功能）
+//  解析引擎：复用自「服务清单自动拆分工具」（规则引擎，纯JS无依赖）
+// ============================================================
+
+/* ============================================================
+   解析引擎（纯逻辑，不依赖DOM，便于测试）
+============================================================ */
+function _pad(n){ return n < 10 ? '0'+n : ''+n; }
+function _iso(y,m,d){ return y + '-' + _pad(m) + '-' + _pad(d); }
+function _n(v){ var m = String(v||'').match(/\d+(?:\.\d+)?/); return m ? m[0] : ''; }
+
+/* 中文日期解析：2026年8月6日 / 8月6日 / 8.6 / 8/6 / 2026-08-06 */
+function parseCNDate(s, year){
+  s = String(s||'').trim();
+  var m = s.match(/(\d{4})\s*[年./\-]\s*(\d{1,2})\s*[月./\-]\s*(\d{1,2})\s*日?/);
+  if(m) return _iso(+m[1], +m[2], +m[3]);
+  m = s.match(/^(\d{1,2})\s*[月./\-]\s*(\d{1,2})\s*日?$/);
+  if(m) return _iso(year, +m[1], +m[2]);
+  m = s.match(/(\d{1,2})\s*[月./\-]\s*(\d{1,2})\s*日?/);
+  if(m) return _iso(year, +m[1], +m[2]);
+  return null;
+}
+/* 从一段文本中提取所有日期（按出现顺序） */
+function extractDates(s, year){
+  var out = [], re = /(\d{4})\s*[年./\-]\s*(\d{1,2})\s*[月./\-]\s*(\d{1,2})\s*日?|(\d{1,2})\s*[月./\-]\s*(\d{1,2})\s*日?/g, m;
+  while((m = re.exec(s))){
+    if(m[1]) out.push(_iso(+m[1], +m[2], +m[3]));
+    else out.push(_iso(year, +m[4], +m[5]));
+  }
+  return out;
+}
+function dateCmp(a, b){ return a < b ? -1 : (a > b ? 1 : 0); }
+function addDaysISO(iso, n){
+  var p = iso.split('-'); var d = new Date(+p[0], +p[1]-1, +p[2]); d.setDate(d.getDate()+n);
+  return _iso(d.getFullYear(), d.getMonth()+1, d.getDate());
+}
+function md(iso){ var p = iso.split('-'); return (+p[1]) + '.' + (+p[2]); }
+function mds(iso){ var p = iso.split('-'); var w = ['周日','周一','周二','周三','周四','周五','周六'][new Date(+p[0], +p[1]-1, +p[2]).getDay()]; return (+p[1]) + '/' + (+p[2]) + ' ' + w; }
+
+var CITY_DICT = ['北京','上海','广州','深圳','成都','重庆','杭州','西安','南京','苏州','武汉','长沙','郑州','天津','青岛','厦门','大连','昆明','丽江','大理','桂林','张家界','凤凰','长沙','贵阳','哈尔滨','长春','沈阳','济南','太原','平遥','大同','洛阳','开封','兰州','西宁','乌鲁木齐','拉萨','敦煌','三亚','海口','宜昌','恩施','扬州','无锡','宁波','黄山','庐山','武夷山','嘉兴','绍兴','珠海','佛山','南宁','南昌','合肥','福州','泉州','漳州','烟台','威海','承德','秦皇岛','呼和浩特','银川','九江','襄阳','十堰'];
+
+function parseServiceList(text, year){
+  var order = {
+    name:'', year:year, adults:2, children:0, childHeight:'', type:'',
+    route:'', start:'', end:'', total:'', deposit:'', balance1:'', balance2:'', planner:'',
+    hotels:[], trains:[], tickets:[], services:[], notes:''
+  };
+  var unmatched = [], warnings = [];
+
+  /* ---- 预处理 ---- */
+  var src = String(text||'');
+  /* 客户名（拆行前优先抓，保留「｜3人」，避免被分隔符拆开） */
+  var nm = src.match(/(?:客户姓名\s*\/\s*群名\s*[|｜]?\s*例[:：]\s*|例[:：]\s*)([^\n|｜]+(?:[|｜]\d+人)?)/);
+  if(!(nm && nm[1].trim())) nm = src.match(/【客户信息】\s*客户[:：]\s*([^\n]+?)(?=\s*(?:城市|服务日期|订单金额|【酒店)|$)/);
+  if(nm && nm[1].trim()) order.name = nm[1].trim();
+  /* 单元格分隔符转换行：tab、|、｜、/ */
+  src = src.replace(/\r\n?/g, '\n').replace(/\t/g, '\n').replace(/\s*[|｜]\s*/g, '\n').replace(/\s*\/\s*/g, '\n');
+  var lines = src.split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
+
+  var curHotel = null, hotelMode = false, financeLine = [];
+
+  for(var i = 0; i < lines.length; i++){
+    var ln = lines[i], handled = false;
+
+    /* ---- 基础信息 ---- */
+    if(/例[:：]/.test(ln) && !order.name){
+      var nm2 = ln.replace(/^.*?例[:：]\s*/, '');
+      if(nm2) order.name = nm2.trim();
+      handled = true;
+    }
+    if(/成人|儿童/.test(ln) && /\d/.test(ln) && !/项目[:：]/.test(ln) && !/日期[:：]/.test(ln) && !/张成人票|张儿童票/.test(ln)){
+      var am = ln.match(/成人[:：]?\s*(\d+)\s*人?/);
+      if(am) order.adults = +am[1];
+      var cm2 = ln.match(/儿童[:：]?\s*(\d+)\s*人?\s*[（(]?\s*(?:身高[:：]?\s*)?([0-9.]+[a-zA-Z]*)/);
+      if(cm2){ order.children = +cm2[1]; order.childHeight = cm2[2]; }
+      else { var cm = ln.match(/儿童[:：]?\s*(\d+)\s*人?/); if(cm) order.children = +cm[1]; }
+      handled = true;
+    }
+    if(/全托管|半托管|单接送|自由行/.test(ln) && ln.length < 30){
+      var tm = ln.match(/(全托管|半托管|单接送|自由行)/);
+      order.type = tm[1]; handled = true;
+    }
+    if(/服务城市|城市序列|途经城市/.test(ln) || (/^[\u4e00-\u9fa5\s–\-—→,，、]+$/.test(ln) && ln.indexOf('–') >= 0 && ln.length < 60)){
+      var seg = ln.replace(/^.*?[:：]\s*/, '');
+      var parts = seg.split(/[–\-—→,，、\s]+/).filter(function(p){
+        return p && /[\u4e00-\u9fa5]/.test(p) && !/\d/.test(p) && p.length <= 6 && CITY_DICT.indexOf(p.replace(/[（(].*?[)）]/g,'')) >= 0;
+      });
+      if(parts.length >= 2){ order.route = parts.join(','); handled = true; }
+    }
+    if(/服务日期/.test(ln)){
+      var ds = extractDates(ln, year);
+      if(ds.length >= 1) order.start = ds[0];
+      if(ds.length >= 2) order.end = ds[1];
+      handled = true;
+    }
+    if(/规划师|填写人|客服/.test(ln) && /[:：]/.test(ln)){
+      var pm = ln.match(/规划师[:：]\s*([^\s]+)/);
+      if(pm) order.planner = pm[1];
+      handled = true;
+    }
+
+    /* ---- 财务 ---- */
+    if(/总额|总金额/.test(ln)){
+      var t = ln.match(/总额[:：]?\s*¥?\s*([\d.]+)/) || ln.match(/总金额[:：]?\s*¥?\s*([\d.]+)/);
+      if(t) order.total = t[1];
+      handled = true;
+    }
+    if(/定金/.test(ln)){
+      var d = ln.match(/定金[:：]?\s*¥?\s*([\d.]+)/);
+      if(d) order.deposit = d[1];
+      handled = true;
+    }
+    if(/尾款/.test(ln)){
+      var bl = ln.match(/尾款[:：]?\s*((?:[\d.]+(?:\s*\+\s*[\d.]+)?))/);
+      if(bl){
+        var nums = bl[1].match(/[\d.]+/g);
+        if(nums){ order.balance1 = nums[0]; if(nums[1]) order.balance2 = nums[1]; }
+      }
+      handled = true;
+    }
+    /* 纯日期行兜底：表格复制时「服务日期」与日期值可能分行 */
+    if(!handled && /^[\d\s年月日./\-]{8,44}$/.test(ln)){
+      var ds0 = extractDates(ln, year);
+      if(ds0.length){
+        if(!order.start) order.start = ds0[0];
+        if(!order.end) order.end = ds0[ds0.length-1];
+        handled = true;
+      }
+    }
+
+    /* ---- 酒店 ---- */
+    var isHotelLine = /酒店信息/.test(ln) || /酒店中文名|酒店英文名|酒店地址/.test(ln) || /^[一二三四五六七八九十\d、.()（）\s]*城市[:：]/.test(ln);
+    if(isHotelLine && !/服务城市/.test(ln)){
+      hotelMode = true;
+      var keys = ln.split(/(?=城市[:：]|酒店英文名[:：]|酒店中文名[:：]|酒店地址[:：]|日期[:：])/);
+      for(var k = 0; k < keys.length; k++){
+        var kv = keys[k].trim();
+        if(/城市[:：]/.test(kv)){
+          var ct = kv.replace(/^.*?城市[:：]\s*/, '').match(/[\u4e00-\u9fa5A-Za-z·]+/);
+          curHotel = {city: ct ? ct[0] : '', cn:'', en:'', addr:'', checkin:'', checkout:''};
+          order.hotels.push(curHotel);
+        } else if(/酒店中文名[:：]/.test(kv) && curHotel){
+          curHotel.cn = kv.replace(/^.*?酒店中文名[:：]\s*/, '').trim();
+        } else if(/酒店英文名[:：]/.test(kv) && curHotel){
+          curHotel.en = kv.replace(/^.*?酒店英文名[:：]\s*/, '').trim();
+        } else if(/酒店地址[:：]/.test(kv) && curHotel){
+          curHotel.addr = kv.replace(/^.*?酒店地址[:：]\s*/, '').trim();
+        } else if(/日期[:：]/.test(kv) && curHotel){
+          var dm = kv.match(/日期[:：]?\s*(\d{1,2})[./\-](\d{1,2})\s*[-–—至~]\s*(\d{1,2})[./\-](\d{1,2})/);
+          if(dm){
+            var ci = _iso(year, +dm[1], +dm[2]);
+            var co = _iso(year, +dm[3], +dm[4]);
+            if(+dm[3] < +dm[1]) co = _iso(year+1, +dm[3], +dm[4]); /* 跨年 */
+            curHotel.checkin = ci; curHotel.checkout = co;
+          }
+        }
+      }
+      handled = true;
+    }
+
+    /* 酒店日期区间行（与酒店名分行时，如「日期：8.5-8.7」单独一行） */
+    if(!handled && curHotel){
+      var hm2 = ln.match(/^日期[:：]?\s*(\d{1,2})[./\-](\d{1,2})\s*[-–—至~]\s*(\d{1,2})[./\-](\d{1,2})/);
+      if(hm2){
+        var ci2 = _iso(year, +hm2[1], +hm2[2]);
+        var co2 = _iso(year, +hm2[3], +hm2[4]);
+        if(+hm2[3] < +hm2[1]) co2 = _iso(year+1, +hm2[3], +hm2[4]);
+        curHotel.checkin = ci2; curHotel.checkout = co2;
+        handled = true;
+      }
+    }
+
+    /* ---- 总预订项目（火车 / 门票混合） ---- */
+    var isBooking = /项目[:：]/.test(ln) || /^\s*\d+[.、)）]\s*日期/.test(ln) || (/日期[:：]/.test(ln) && /[GDKC]\d{1,4}/.test(ln) && !hotelMode);
+    if(isBooking && !handled){
+      /* 火车行可能被分隔符拆成两段（如「…二等座」+「G322 成都东 → …」），合并下一行重试 */
+      if(i + 1 < lines.length && /^[GDKC]\s*\d{1,4}/.test(lines[i+1]) && !/[GDKC]\s*\d{1,4}/.test(ln)){
+        ln = ln + ' ' + lines[i+1]; i++;
+      }
+      var bdate = null;
+      var bd = ln.match(/日期[:：]?\s*([\d年月日./\-]+)/);
+      if(bd) bdate = parseCNDate(bd[1], year);
+      var proj = ln;
+      var pj = ln.match(/项目[:：]\s*(.*)/);
+      if(pj) proj = pj[1];
+      /* 金额（取项目文本中最后一个数字） */
+      var amt = '';
+      var nums = proj.match(/[\d]+(?:\.\d+)?/g);
+      if(nums && nums.length) amt = nums[nums.length-1];
+      /* 车次 */
+      var tn = proj.match(/([GDKC])\s*(\d{1,4})\s*(次|号)?/);
+      if(tn){
+        var train = {date: bdate || '', no: tn[1] + tn[2], from:'', to:'', dep:'', arr:'', seats:'', amount: amt};
+        var seg = proj.replace(/[GDKC]\s*\d{1,4}\s*(次|号)?/, ' ').replace(/\s+/g, ' ').trim();
+        var fm = seg.match(/([\u4e00-\u9fa5A-Za-z]+?)\s*(?:→|->|—>|-->)\s*([\u4e00-\u9fa5A-Za-z]+)/);
+        if(!fm) fm = seg.match(/([\u4e00-\u9fa5A-Za-z]+?)\s*(?:至|到)\s*([\u4e00-\u9fa5A-Za-z]+)/);
+        if(fm){ train.from = fm[1]; train.to = fm[2]; }
+        var tm = proj.match(/(\d{1,2}[:：]\d{2})\s*[-–—~至]\s*(\d{1,2}[:：]\d{2})/);
+        if(tm){ train.dep = tm[1]; train.arr = tm[2]; }
+        var sm = proj.match(/(\d+)\s*张成人票\s*[,，]?\s*(\d+)\s*张儿童票/);
+        if(sm) train.seats = sm[1] + '成人+' + sm[2] + '儿童';
+        else { var sm2 = proj.match(/(\d+)\s*张成人票/); if(sm2) train.seats = sm2[1] + '成人'; }
+        var sm3 = proj.match(/(\d+成人\+\d+儿童)|(2成人\+1儿童)/);
+        if(!train.seats && sm3) train.seats = sm3[0];
+        order.trains.push(train);
+      } else {
+        /* 门票 */
+        var tick = {date: bdate || '', name:'', detail:'', count:'', amount: amt};
+        var tmp = proj.replace(/[\d]+(?:\.\d+)?\s*$/, '').trim();
+        var cmt = tmp.match(/[（(]([^（）()]*)[）)]/);
+        if(cmt){ tick.detail = cmt[1].trim(); }
+        var ctm = tmp.match(/(\d+\s*张成人票\s*[,，]?\s*\d+\s*张儿童票|\d+\s*张成人票|\d+\s*张)/);
+        if(ctm) tick.count = ctm[1];
+        var nm3 = tmp.replace(/[（(][^（）()]*[）)]/g, '').replace(/(\d+\s*张成人票\s*[,，]?\s*\d+\s*张儿童票|\d+\s*张成人票|\d+\s*张)/g, '').replace(/\s+/g,' ').replace(/门票/g,'').trim();
+        tick.name = nm3;
+        if(!tick.name && cmt) tick.name = cmt[1].trim();
+        order.tickets.push(tick);
+      }
+      handled = true;
+    }
+
+    /* ---- 每日服务（司机 / 导游 / 门票） ---- */
+    if(!handled && /司机|导游|用车|包车|接机|送机/.test(ln) && /日期|路线/.test(ln)){
+      var day = { date:'', city:'', driver:'', guide:'', ticketRaw:'', note:'' };
+      var dkey = ln.match(/日期[:：]?\s*([\d年月日./\-]+)/);
+      if(dkey) day.date = parseCNDate(dkey[1], year);
+      var rest = ln;
+      var segs = rest.split(/(?=路线[:：]|司机[:：]|导游[:：]|门票[:：]|备注[:：]|住宿[:：]|用餐[:：])/);
+      for(var s = 0; s < segs.length; s++){
+        var sv = segs[s].trim();
+        if(/^路线[:：]/.test(sv)){ /* 路线暂存 */ }
+        else if(/^司机[:：]/.test(sv)){ var dv = sv.replace(/^司机[:：]\s*/, '').trim(); day.driver = (dv === '无' || !dv) ? '' : dv; }
+        else if(/^导游[:：]/.test(sv)){ var gv = sv.replace(/^导游[:：]\s*/, '').trim(); day.guide = (gv === '无' || !gv) ? '' : gv; }
+        else if(/^门票[:：]/.test(sv)){ day.ticketRaw = sv.replace(/^门票[:：]\s*/, '').trim(); }
+        else if(/^备注[:：]/.test(sv)){ day.note = sv.replace(/^备注[:：]\s*/, '').trim(); }
+      }
+      if(day.driver || day.guide || day.ticketRaw){
+        order.services.push(day);
+        /* 每日服务里的门票 → 同步生成门票条目 */
+        if(day.ticketRaw && day.ticketRaw !== '无'){
+          var tk = {date: day.date, name:'', detail:'', count:'', amount:''};
+          var nums2 = day.ticketRaw.match(/[\d]+(?:\.\d+)?/g);
+          if(nums2 && nums2.length) tk.amount = nums2[nums2.length-1];
+          var nm4 = day.ticketRaw.replace(/[\d]+(?:\.\d+)?\s*$/, '').replace(/[\d]+\s*张/g, '').replace(/\s+/g,' ').replace(/门票/g,'').trim();
+          var ctm2 = day.ticketRaw.match(/\d+\s*张/g);
+          if(ctm2 && ctm2.length){
+            var uniq = ctm2.filter(function(v, i, a){ return a.indexOf(v) === i; });
+            tk.count = uniq.join(' ');
+          }
+          tk.name = nm4 || '门票';
+          order.tickets.push(tk);
+        }
+        if(day.note && day.note !== '无' && day.date){
+          order.notes = (order.notes ? order.notes + '｜' : '') + mds(day.date) + ' ' + day.note;
+        }
+      }
+      handled = true;
+    }
+
+    /* ---- 特殊需求 / 备注 ---- */
+    if(!handled && /特殊需求|注意事项|护照资料|饮食禁忌|客户特别要求|客户自理|需要特别注意/.test(ln)){
+      var kv2 = ln.match(/(护照资料|饮食禁忌|客户特别要求|客户自理|需要特别注意|特殊需求|注意事项)[:：]\s*([^\n]*?)(?=\s*(?:护照资料|饮食禁忌|客户特别要求|客户自理|需要特别注意|不包含|不含)[:：]|$)/);
+      if(kv2 && kv2[2].trim() && kv2[2].trim() !== '无' && kv2[2].trim() !== '不需要'){
+        order.notes = (order.notes ? order.notes + '｜' : '') + kv2[1] + '：' + kv2[2].trim();
+      }
+      handled = true;
+    }
+
+    if(!handled && ln && !/^例[:：]/.test(ln) && !/项目\s*[|｜]\s*填写内容/.test(ln) && !/填写内容/.test(ln)
+       && !/^--/.test(ln) && !/^Tripbook/.test(ln) && !/^简洁版/.test(ln) && !/规划师填写/.test(ln)
+       && !/下游对接与计调落地使用/.test(ln) && !/^一、基础信息/.test(ln) && !/^服务清单文字版/.test(ln)
+       && !/可直接复制到企业微信群/.test(ln) && !/^【客户信息】/.test(ln) && !/^\d+\s*人$/.test(ln)
+       && !/^客户姓名|^群名|WhatsApp|^客户人数|^客户类型|^服务城市|^服务清单填写人|^下游对接群/.test(ln)
+       && !/^[一二三四五六七八九十]+[、.）)]?\s*$/.test(ln) && ln !== '无' && ln !== '项目') unmatched.push(ln);
+  }
+
+  /* ---- 酒店日期与行程起止的推断 ---- */
+  if(order.hotels.length){
+    var firstIn = order.hotels[0].checkin, lastOut = order.hotels[0].checkout;
+    for(var h = 1; h < order.hotels.length; h++){
+      if(order.hotels[h].checkin && (!firstIn || order.hotels[h].checkin < firstIn)) firstIn = order.hotels[h].checkin;
+      if(order.hotels[h].checkout && (!lastOut || order.hotels[h].checkout > lastOut)) lastOut = order.hotels[h].checkout;
+    }
+    if(!order.start && firstIn) order.start = firstIn;
+    if(!order.end && lastOut) order.end = lastOut;
+    if(order.start && firstIn && firstIn < order.start) order.start = firstIn;
+    if(order.end && lastOut && lastOut > order.end) order.end = lastOut;
+  }
+  /* 司导城市推断：按日期匹配入住酒店 */
+  for(var sv2 = 0; sv2 < order.services.length; sv2++){
+    var sv3 = order.services[sv2];
+    if(!sv3.city && sv3.date && order.hotels.length){
+      for(var h2 = 0; h2 < order.hotels.length; h2++){
+        var hh = order.hotels[h2];
+        if(hh.checkin && sv3.date >= hh.checkin && (!hh.checkout || sv3.date < hh.checkout)){ sv3.city = hh.city; break; }
+      }
+      if(!sv3.city){
+        for(var h3 = 0; h3 < order.hotels.length; h3++){
+          if(order.hotels[h3].checkin === sv3.date){ sv3.city = order.hotels[h3].city; break; }
+        }
+      }
+    }
+    if(sv3.city){ /* 每日服务行城市回填到备注（如果行内没有城市标记） */ }
+  }
+  /* 城市字段缺失的酒店：用路线顺序匹配 */
+  if(order.route){
+    var routeArr = order.route.split(',');
+    for(var h4 = 0; h4 < order.hotels.length; h4++){
+      if(!order.hotels[h4].city && routeArr[h4]) order.hotels[h4].city = routeArr[h4];
+    }
+  }
+
+  /* ---- 提醒 ---- */
+  if(order.hotels.length > 1){
+    for(var h5 = 1; h5 < order.hotels.length; h5++){
+      var prev = order.hotels[h5-1], cur = order.hotels[h5];
+      if(prev.checkout && cur.checkin){
+        var hasMove = order.trains.some(function(t){ return t.date === cur.checkin; });
+        if(!hasMove){
+          var note = prev.city + '退房(' + md(prev.checkout) + ') → ' + cur.city + '入住(' + md(cur.checkin) + ') 未识别到当日火车/航班，请确认交通方式';
+          warnings.push('🚄 ' + note);
+        }
+      }
+    }
+  }
+  order.trains.forEach(function(t){
+    if(t.date) warnings.push('🚄 ' + t.no + '（' + mds(t.date) + '）12306开售日：' + md(addDaysISO(t.date, -14)) + '，到点开抢');
+  });
+  order.tickets.forEach(function(t){
+    if(!t.date) return;
+    if(/故宫/.test(t.name)) warnings.push('🏛 ' + t.name + '（' + mds(t.date) + '）需提前7天预约 → ' + md(addDaysISO(t.date, -7)) + ' 前完成');
+    if(/迪士尼/.test(t.name)) warnings.push('🎢 ' + t.name + '（' + mds(t.date) + '）建议提前7天以上购票');
+    if(/环球/.test(t.name)) warnings.push('🌍 ' + t.name + '（' + mds(t.date) + '）建议提前7天以上购票');
+    if(/长恨歌/.test(t.name)) warnings.push('🎭 ' + t.name + '（' + mds(t.date) + '）需提前3-5天订场次');
+  });
+  if(order.total){
+    var s1 = (parseFloat(order.deposit)||0) + (parseFloat(order.balance1)||0);
+    var s2 = s1 + (parseFloat(order.balance2)||0);
+    if(Math.abs(s1 - parseFloat(order.total)) > 0.01 && Math.abs(s2 - parseFloat(order.total)) > 0.01 && s2 > 0){
+      warnings.push('💰 财务核对：定金+尾款(' + s2 + ') ≠ 总额(' + order.total + ')，请确认');
+    }
+  }
+
+  return { order: order, unmatched: unmatched, warnings: warnings };
+}
+
+/* ---- 每日执行清单（轻量版） ---- */
+function buildDaily(order){
+  if(!order.start || !order.end) return [];
+  var days = [];
+  var d = order.start;
+  while(d <= order.end){
+    days.push({
+      date: d,
+      checkin: order.hotels.filter(function(h){ return h.checkin === d; }),
+      checkout: order.hotels.filter(function(h){ return h.checkout === d; }),
+      trains: order.trains.filter(function(t){ return t.date === d; }),
+      tickets: order.tickets.filter(function(t){ return t.date === d; }),
+      services: order.services.filter(function(s){ return s.date === d; })
+    });
+    d = addDaysISO(d, 1);
+  }
+  return days;
+}
+
+
+// ---------- 上传/解析/填充 ----------
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function handleServiceListFile(file) {
+  if (!file) return;
+  var name = file.name || '';
+  if (/\.doc$/i.test(name)) { showToast('暂不支持 .doc 旧格式，请用 Word 另存为 .docx 后再上传', 'warning'); return; }
+  if (!/\.(docx|txt)$/i.test(name)) { showToast('请上传 .docx 或 .txt 文件', 'warning'); return; }
+
+  var resultEl = document.getElementById('parseResult');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<span style="color:var(--gray-600);">正在解析 <strong>' + esc(name) + '</strong> ...</span>';
+
+  var onText = function(text) {
+    if (!text || !text.trim()) {
+      resultEl.innerHTML = '<span style="color:var(--danger);">⚠️ 未能读取到文本内容，请检查文件格式</span>';
+      return;
+    }
+    var res = parseServiceList(text, new Date().getFullYear());
+    applyParsedText(res);
+  };
+
+  if (/\.txt$/i.test(name)) {
+    var reader = new FileReader();
+    reader.onload = function(e) { onText(String(e.target.result || '')); };
+    reader.onerror = function() { resultEl.innerHTML = '<span style="color:var(--danger);">文件读取失败</span>'; };
+    reader.readAsText(file);
+  } else {
+    if (typeof mammoth === 'undefined') {
+      resultEl.innerHTML = '<span style="color:var(--danger);">解析组件未加载（需联网）。可把 Word 内容复制为纯文本粘贴到下方手动添加，或刷新页面重试。</span>';
+      return;
+    }
+    if (!file.arrayBuffer) {
+      resultEl.innerHTML = '<span style="color:var(--danger);">当前浏览器不支持，请用最新版 Chrome/Edge 打开</span>';
+      return;
+    }
+    file.arrayBuffer().then(function(buf) {
+      return mammoth.extractRawText({ arrayBuffer: buf });
+    }).then(function(r2) {
+      onText(r2.value || '');
+    }).catch(function(err) {
+      resultEl.innerHTML = '<span style="color:var(--danger);">docx 解析失败：' + esc(err && err.message ? err.message : String(err)) + '</span>';
+    });
+  }
+}
+
+function applyParsedText(res) {
+  var o = res.order;
+  var resultEl = document.getElementById('parseResult');
+
+  // 1) 填充团组信息
+  if (o.name) {
+    var tName = String(o.name).replace(/[｜|]\s*\d+\s*人.*$/, '').trim();
+    if (tName && !/团$/.test(tName)) tName = tName + ' 团';
+    document.getElementById('tourName').value = tName;
+    document.getElementById('clientName').value = tName;
+  }
+  var sizeParts = [];
+  if (o.adults) sizeParts.push(o.adults + '成人');
+  if (o.children) sizeParts.push(o.children + '儿童');
+  if (o.childHeight) sizeParts.push('(儿童' + o.childHeight + ')');
+  if (sizeParts.length) document.getElementById('groupSize').value = sizeParts.join(' ');
+  if (o.planner) document.getElementById('operator').value = o.planner;
+  if (o.start) document.getElementById('startDate').value = o.start;
+  if (o.end) document.getElementById('endDate').value = o.end;
+  if (o.route) document.getElementById('routeInfo').value = o.route;
+  if (o.total) document.getElementById('totalAmount').value = o.total;
+  if (o.deposit) document.getElementById('depositAmount').value = o.deposit;
+  if (o.notes) document.getElementById('specialNotes').value = o.notes;
+
+  // 2) 构建服务项
+  modalServiceItems = parsedToServiceItems(o);
+  renderModalServiceList();
+
+  // 3) 反馈
+  var unmatched = res.unmatched || [];
+  var warns = res.warnings || [];
+  var lines = [];
+  lines.push('<span style="color:var(--success);">✅ 识别成功：基础信息已自动填入，共识别 <strong>' + modalServiceItems.length + '</strong> 项服务，可直接「下一步：执行清单」或继续调整</span>');
+  if (unmatched.length) {
+    lines.push('<div style="margin-top:6px;color:var(--warning);">⚠️ 以下 ' + unmatched.length + ' 行未识别（已跳过），如有需要请在下方手动添加：<br/><span style="font-size:11px;">' + unmatched.slice(0, 10).map(esc).join('<br/>') + '</span></div>');
+  }
+  if (warns.length) {
+    lines.push('<div style="margin-top:6px;color:var(--danger);font-size:12px;">' + warns.slice(0, 6).join('<br/>') + '</div>');
+  }
+  resultEl.innerHTML = lines.join('');
+}
+
+function parsedToServiceItems(o) {
+  var items = [];
+  function push(type, data) {
+    var cfg = typeConfig[type];
+    items.push({
+      id: generateId(),
+      type: type,
+      typeLabel: cfg.label,
+      typeIcon: cfg.icon,
+      data: data,
+      status: 'pending',
+      reviewer: '',
+      checklist: cfg.checklist.map(function(c) { return { action: c.action, node: c.node, done: false }; })
+    });
+  }
+  (o.hotels || []).forEach(function(h) {
+    push('hotel', {
+      city: h.city || '', hotelName: h.cn || '', hotelNameEn: h.en || '',
+      checkIn: h.checkin || '', checkOut: h.checkout || '',
+      roomType: '', nights: (h.checkin && h.checkout) ? nightsBetween(h.checkin, h.checkout) : '',
+      hotelAmount: '', hotelNotes: h.addr || ''
+    });
+  });
+  (o.trains || []).forEach(function(t) {
+    push('train', {
+      trainNo: t.no || '', fromStation: t.from || '', toStation: t.to || '',
+      trainDate: t.date || '', departTime: t.dep || '', arriveTime: t.arr || '',
+      seatClass: '', ticketCount: t.seats || '', trainAmount: t.amount || '',
+      trainNotes: ''
+    });
+  });
+  (o.tickets || []).forEach(function(t) {
+    push('ticket', {
+      ticketName: t.name || '', ticketNameEn: '', ticketDate: t.date || '',
+      ticketType: '', ticketIncludes: t.detail || '', ticketCount: t.count || '',
+      ticketAmount: t.amount || '', ticketNotes: ''
+    });
+  });
+  (o.services || []).forEach(function(s) {
+    // 从 "描述 金额" 文本中拆出金额
+    function splitAmt(txt) {
+      var t = String(txt == null ? '' : txt).trim();
+      var m = t.match(/^(.*?)\s*(\d+(?:\.\d+)?)\s*$/);
+      return m ? { name: m[1].trim(), amount: m[2] } : { name: t, amount: '' };
+    }
+    if (s.guide) {
+      var g = splitAmt(s.guide);
+      // 导游行里混入的门票类服务 → 归入门票
+      if (/门票|索道|滑道|缆车|船票|观光车|演出|表演|区间车|景交/.test(g.name)) {
+        push('ticket', { ticketName: g.name, ticketNameEn: '', ticketDate: s.date || '', ticketType: '', ticketIncludes: '', ticketCount: '', ticketAmount: g.amount, ticketNotes: '' });
+      } else {
+        push('guide', { guideCity: s.city || '', guideDate: s.date || '', guideLanguage: '英语', guideDuration: '', guideRoute: g.name, guideAmount: g.amount, guideNotes: '' });
+      }
+    }
+    if (s.driver) {
+      var c = splitAmt(s.driver);
+      push('car', { carRoute: (s.city || '') + ' 市区用车', carDate: s.date || '', carType: '司机', carService: c.name, carTime: '', carPickup: '', carAmount: c.amount, carNotes: '' });
+    }
+  });
+  return items;
+}
+
+function nightsBetween(a, b) {
+  var d1 = new Date(a), d2 = new Date(b);
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime()) || d2 <= d1) return '';
+  return Math.round((d2 - d1) / 86400000);
+}
+
+// ============ 上传服务清单自动拆分 结束 ============
 
 // ============ Settings ============
 // ============ Finance Center ============
