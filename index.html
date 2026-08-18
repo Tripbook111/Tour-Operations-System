@@ -854,6 +854,7 @@
                 <th>申请日期</th>
                 <th>报销金额</th>
                 <th>支付凭证</th>
+                <th>打款凭证</th>
                 <th>状态</th>
                 <th>操作</th>
               </tr>
@@ -1993,7 +1994,7 @@ function renderUrgentTasks() {
   document.getElementById('urgentTasksList').innerHTML = `
     <table class="data-table">
       <thead><tr>
-        <th class="text-left">团</th><th class="text-left">服务项目</th><th>日期</th><th>距出团</th><th>报价(¥)</th><th>成本(¥)</th><th>状态</th><th>完成情况</th><th>操作</th>
+        <th class="text-left">团</th><th class="text-left">服务项目</th><th>日期</th><th>距出团</th><th>报价(¥)</th><th>成本(¥)</th><th>状态</th><th>操作</th>
       </tr></thead>
       <tbody>
         ${filtered.map(r => {
@@ -2001,17 +2002,22 @@ function renderUrgentTasks() {
           const days = getDaysToStart(t);
           const pr = getTodoPriority(t, item);
           const quote = getItemQuote(item);
-          const cost = getItemCost(item);
-          const doneBadge = item.status === 'done' ? '<span class="badge badge-done">已完成</span>' :
-                            item.status === 'progress' ? '<span class="badge badge-progress">进行中</span>' :
-                            '<span class="badge badge-pending">待预订</span>';
+          const costVal = item.cost || '';
+          const statusOptions = `
+            <option value="pending" ${item.status==='pending'?'selected':''}>待处理</option>
+            <option value="progress" ${item.status==='progress'?'selected':''}>进行中</option>
+            <option value="done" ${item.status==='done'?'selected':''}>已完成</option>
+          `;
           return `<tr ${item.status === 'done' ? 'style="opacity:.55;"' : ''}>
             <td class="text-left"><strong>${esc(tourDisplayName(t))}</strong><br><span style="font-size:11px;color:var(--gray-600)">${esc(tourClientName(t))}</span></td>
             <td class="text-left">${item.typeIcon || ''} <strong>${esc(item.typeLabel || '')}</strong> · ${esc(getItemName(item))}<br><span style="font-size:11px;color:var(--gray-500);">${esc(getItemDetail(item))}</span></td>
             <td>${getItemDateRange(item) || '-'}</td>
             <td>${days !== null ? (days >= 0 ? days + ' 天' : '行程中') : '-'}</td>
             <td style="font-weight:600;">${quote > 0 ? '¥' + quote.toLocaleString() : '-'}</td>
-            <td style="font-weight:600;">${cost > 0 ? '¥' + cost.toLocaleString() : '-'}</td>
+            <td><input type="number" step="0.01" min="0" placeholder="填成本"
+                 value="${costVal}"
+                 onchange="setTaskCost('${t.id}','${item.id}',this.value)"
+                 style="width:78px;padding:4px 6px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;" /></td>
             <td>
               <select onchange="setTaskPriority('${t.id}','${item.id}',this.value)" style="padding:2px 6px;font-size:11px;border-radius:4px;border:1px solid var(--gray-200);${PRIORITY_STYLES[pr]}">
                 <option value="紧急" ${pr==='紧急'?'selected':''}>紧急</option>
@@ -2019,15 +2025,36 @@ function renderUrgentTasks() {
                 <option value="一般" ${pr==='一般'?'selected':''}>一般</option>
               </select>
             </td>
-            <td>${doneBadge}</td>
             <td>
-              ${item.status !== 'done' ? `<button class="btn btn-success btn-sm" onclick="markTaskDone('${t.id}','${item.id}')">完成</button>` : ''}
+              <select onchange="setTaskStatus('${t.id}','${item.id}',this.value)" style="padding:2px 6px;font-size:11px;border-radius:4px;border:1px solid var(--gray-200);">${statusOptions}</select>
               <button class="btn btn-outline btn-sm" onclick="editTour('${t.id}');setTimeout(()=>{switchStep(2);const i=modalServiceItems.findIndex(x=>x.id==='${item.id}');if(i>=0)editModalService(i);},350)">编辑</button>
             </td>
           </tr>`;
         }).join('')}
       </tbody>
     </table>`;
+}
+
+function setTaskCost(tourId, itemId, val) {
+  const tour = tours.find(t => t.id === tourId);
+  if (!tour) return;
+  const item = (tour.serviceItems || []).find(i => i.id === itemId);
+  if (!item) return;
+  item.cost = val;
+  tour.updatedAt = new Date().toISOString();
+  saveData();
+  renderUrgentTasks();
+}
+
+function setTaskStatus(tourId, itemId, val) {
+  const tour = tours.find(t => t.id === tourId);
+  if (!tour) return;
+  const item = (tour.serviceItems || []).find(i => i.id === itemId);
+  if (!item) return;
+  item.status = val;
+  tour.updatedAt = new Date().toISOString();
+  saveData();
+  renderUrgentTasks();
 }
 
 function setTaskPriority(tourId, itemId, val) {
@@ -2415,11 +2442,11 @@ function renderModalStep3() {
       <td>${getItemAmount(item) ? '¥' + getItemAmount(item) : '<span style="color:var(--gray-400);font-size:11px;">—</span>'}</td>
       <td><input type="number" step="0.01" min="0" placeholder="执行时填"
            value="${item.cost || ''}"
-           onchange="modalServiceItems[${idx}].cost=this.value;syncModalChecklist();"
+           onchange="modalServiceItems[${idx}].cost=this.value;syncModalStep3Cost();"
            style="width:88px;padding:4px 6px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;" /></td>
       <td>${statusBadge}</td>
       <td>
-        <select onchange="modalServiceItems[${idx}].status=this.value;syncModalChecklist();renderModalStep3();" style="padding:2px 6px;font-size:11px;border:1px solid var(--gray-200);border-radius:4px;">
+        <select onchange="modalServiceItems[${idx}].status=this.value;syncModalStep3Status();renderModalStep3();" style="padding:2px 6px;font-size:11px;border:1px solid var(--gray-200);border-radius:4px;">
           <option value="pending" ${item.status==='pending'?'selected':''}>待处理</option>
           <option value="progress" ${item.status==='progress'?'selected':''}>进行中</option>
           <option value="done" ${item.status==='done'?'selected':''}>已完成</option>
@@ -2462,6 +2489,24 @@ function renderModalStep3() {
   document.getElementById('modalContactsBody').innerHTML = roles.map(r =>
     `<tr><td>${r}</td><td><input style="width:80px;padding:2px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;" /></td><td><input style="width:120px;padding:2px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;" /></td><td><input style="width:120px;padding:2px;border:1px solid var(--gray-200);border-radius:4px;font-size:12px;" /></td></tr>`
   ).join('');
+}
+
+/* 执行清单 Step3 的输入实时同步回 tours（与待办页面联动） */
+function syncModalStep3Cost() {
+  if (!currentEditingTourId) return;
+  const tour = tours.find(t => t.id === currentEditingTourId);
+  if (!tour) return;
+  tour.serviceItems = JSON.parse(JSON.stringify(modalServiceItems));
+  tour.updatedAt = new Date().toISOString();
+  saveData();
+}
+function syncModalStep3Status() {
+  if (!currentEditingTourId) return;
+  const tour = tours.find(t => t.id === currentEditingTourId);
+  if (!tour) return;
+  tour.serviceItems = JSON.parse(JSON.stringify(modalServiceItems));
+  tour.updatedAt = new Date().toISOString();
+  saveData();
 }
 
 function saveTour() {
@@ -3798,7 +3843,7 @@ function renderFinanceCost() {
     html = '<tr><td colspan="11" style="text-align:center;color:var(--gray-400);padding:24px;">\u6682\u65E0\u6210\u672C\u6570\u636E\u3002\u8BF7\u5728\u56E2\u8BE6\u60C5\u4E2D\u6DFB\u52A0\u670D\u52A1\u9879\uFF0C\u6267\u884C\u843D\u5730\u65F6\u586B\u5199\u6210\u672C\u91D1\u989D\u3002</td></tr>';
   } else {
     allItems.forEach(item => {
-      const paymentLabels = { unpaid: '未付', partial: '部分付', paid: '已付' };
+      const paymentLabels = { unpaid: '未付', partial: '部分付', paid: '已支付' };
       const paymentColors = { unpaid: 'danger', partial: 'warning', paid: 'success' };
       const cat = COST_CATEGORIES[item.category];
       const sName = (item.service.data && item.service.data.name) || item.service.name || getItemName(item.service);
@@ -4029,7 +4074,7 @@ function renderFinanceReimburse() {
   const reimbursements = (financeData.reimbursements || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   let html = '';
   if (reimbursements.length === 0) {
-    html = '<tr><td colspan="10" style="text-align:center;color:var(--gray-400);padding:24px;">暂无报销记录。对个人支出（导游/车队/地接社）点击右上角「申请报销」，对公支出由财务对账。</td></tr>';
+    html = '<tr><td colspan="11" style="text-align:center;color:var(--gray-400);padding:24px;">暂无报销记录。对个人支出（导游/车队/地接社）点击右上角「申请报销」，对公支出由财务对账。</td></tr>';
   } else {
     const statusLabels = { pending: '待审批', approved: '已批准', rejected: '已驳回', paid: '已打款' };
     const statusColors = { pending: 'warning', approved: 'success', rejected: 'danger', paid: 'success' };
@@ -4045,10 +4090,11 @@ function renderFinanceReimburse() {
         '<td>' + (r.applyDate || '-') + '</td>' +
         '<td style="font-weight:600;">¥' + (parseFloat(r.amount) || 0).toLocaleString() + '</td>' +
         '<td>' + ((r.proofs && r.proofs.length) ? '<button class="btn btn-ghost btn-sm" title="查看支付凭证" onclick="viewReimProofs(\'' + r.id + '\')">📎' + r.proofs.length + '</button>' : '<span style="color:var(--gray-400);font-size:11px;">无</span>') + '</td>' +
+        '<td>' + ((r.paidProofs && r.paidProofs.length) ? '<button class="btn btn-ghost btn-sm" title="查看打款凭证" onclick="viewReimPaidProofs(\'' + r.id + '\')">📎' + r.paidProofs.length + '</button>' : '<span style="color:var(--gray-400);font-size:11px;">-</span>') + '</td>' +
         '<td><span class="stage-badge stage-' + (statusColors[r.status] || 'new') + '">' + (statusLabels[r.status] || r.status) + '</span></td>' +
         '<td style="display:flex;gap:4px;flex-wrap:wrap;">' +
           (r.status === 'pending' ? '<button class="btn btn-sm btn-success" onclick="updateReimburseStatus(\'' + r.id + '\', \'approved\')">批准</button><button class="btn btn-sm btn-danger" onclick="updateReimburseStatus(\'' + r.id + '\', \'rejected\')">驳回</button>' : '') +
-          (r.status === 'approved' ? '<button class="btn btn-sm btn-primary" onclick="updateReimburseStatus(\'' + r.id + '\', \'paid\')">确认打款</button>' : '') +
+          (r.status === 'approved' ? '<button class="btn btn-sm btn-primary" onclick="openReimbursePayModal(\'' + r.id + '\')">确认打款</button>' : '') +
           '<button class="btn btn-sm btn-secondary" onclick="viewReimburseDetail(\'' + r.id + '\')">查看</button>' +
           '<button class="btn btn-sm btn-danger" onclick="deleteReimburse(\'' + r.id + '\')">删除</button>' +
         '</td>' +
@@ -4256,6 +4302,138 @@ function viewReimProofs(id) {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
+// ===== 报销审批：确认打款（上传打款凭证，同步成本概览为已支付） =====
+function openReimbursePayModal(id) {
+  const reimb = financeData.reimbursements.find(r => r.id === id);
+  if (!reimb) return;
+  closeDynamicModal('reimbursePayModal');
+  const tour = tours.find(t => t.id === reimb.tourId);
+  const services = tour ? getTourServices(tour).filter(s => (reimb.items || []).includes(s.id)) : [];
+  const sNames = services.map(s => getItemName(s)).join('、') || '-';
+  const today = new Date().toISOString().slice(0, 10);
+
+  const html = '<div class="modal-overlay" id="reimbursePayModal" style="display:flex;">' +
+    '<div class="modal" style="max-width:560px;">' +
+      '<div class="modal-header">' +
+        '<h3>确认打款 · ' + reimb.id + '</h3>' +
+        '<button class="modal-close" onclick="closeDynamicModal(\'reimbursePayModal\')">&times;</button>' +
+      '</div>' +
+      '<div style="background:var(--gray-50);padding:12px;border-radius:6px;margin-bottom:16px;font-size:13px;">' +
+        '<div><strong>团名：</strong>' + (tour ? tourDisplayName(tour) : '已删除团') + '</div>' +
+        '<div><strong>收款人：</strong>' + (reimb.payee || '-') + '</div>' +
+        '<div><strong>报销金额：</strong><span style="color:var(--primary);font-weight:600;">¥' + (parseFloat(reimb.amount) || 0).toLocaleString() + '</span></div>' +
+        '<div><strong>关联项目：</strong>' + sNames + '</div>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>实际打款金额 (¥)</label>' +
+        '<input type="number" id="reimPaidAmount" class="form-control" value="' + (reimb.amount || '') + '" step="0.01">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>打款日期</label>' +
+        '<input type="date" id="reimPaidDate" class="form-control" value="' + today + '">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>打款备注</label>' +
+        '<input type="text" id="reimPaidNote" class="form-control" placeholder="可选">' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>打款凭证截图（可多选）</label>' +
+        '<input type="file" id="reimPaidProofInput" accept="image/*" multiple class="form-control" onchange="handleReimPaidProofFiles(this.files)" />' +
+        '<div id="reimPaidProofPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>' +
+        '<div style="font-size:11px;color:var(--gray-400);margin-top:4px;">支持 jpg/png，单张 ≤1.5MB，最多 6 张。</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">' +
+        '<button class="btn btn-secondary" onclick="closeDynamicModal(\'reimbursePayModal\')">取消</button>' +
+        '<button class="btn btn-primary" onclick="saveReimbursePayment(\'' + id + '\')">确认打款</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  window._pendingReimPaidProofs = (reimb.paidProofs || []).slice();
+  renderReimPaidProofPreview();
+}
+
+function renderReimPaidProofPreview() {
+  const box = document.getElementById('reimPaidProofPreview');
+  if (!box) return;
+  box.innerHTML = (window._pendingReimPaidProofs || []).map((p, i) =>
+    '<div style="position:relative;">' +
+    '<img src="' + p + '" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--gray-200);cursor:pointer;" onclick="window.open(\'' + p + '\')" />' +
+    '<button class="btn btn-ghost btn-sm" style="position:absolute;top:-6px;right:-6px;padding:0 5px;background:var(--danger);color:#fff;border-radius:50%;line-height:1.2;" onclick="removeReimPaidProof(' + i + ')">&times;</button>' +
+    '</div>').join('') || '<span style="font-size:12px;color:var(--gray-400);">尚未上传凭证</span>';
+}
+
+function handleReimPaidProofFiles(files) {
+  if (!files || !files.length) return;
+  Array.from(files).forEach(f => {
+    if (!/^image\//.test(f.type)) { showToast('请选择图片文件', 'warning'); return; }
+    if (f.size > 1.5 * 1024 * 1024) { showToast('「' + f.name + '」超过1.5MB，已跳过', 'warning'); return; }
+    if ((window._pendingReimPaidProofs || []).length >= 6) { showToast('最多6张凭证', 'warning'); return; }
+    const reader = new FileReader();
+    reader.onload = e => { window._pendingReimPaidProofs.push(e.target.result); renderReimPaidProofPreview(); };
+    reader.readAsDataURL(f);
+  });
+  document.getElementById('reimPaidProofInput').value = '';
+}
+
+function removeReimPaidProof(i) {
+  window._pendingReimPaidProofs.splice(i, 1);
+  renderReimPaidProofPreview();
+}
+
+function saveReimbursePayment(id) {
+  const reimb = financeData.reimbursements.find(r => r.id === id);
+  if (!reimb) return;
+  const paidAmount = parseFloat(document.getElementById('reimPaidAmount').value) || 0;
+  const paidDate = document.getElementById('reimPaidDate').value;
+  const paidNote = document.getElementById('reimPaidNote').value.trim();
+  if (paidAmount <= 0) return showToast('请输入打款金额', 'error');
+
+  const tour = tours.find(t => t.id === reimb.tourId);
+  const services = tour ? getTourServices(tour).filter(s => (reimb.items || []).includes(s.id)) : [];
+
+  // 同步成本概览：关联项目全部置为已支付
+  if (!financeData.payments) financeData.payments = {};
+  services.forEach(s => {
+    const cost = getItemCost(s);
+    financeData.payments[s.id] = {
+      status: 'paid',
+      paid: cost > 0 ? cost : paidAmount,
+      date: paidDate,
+      note: paidNote || '报销打款',
+      proofs: (window._pendingReimPaidProofs || []).slice()
+    };
+  });
+
+  reimb.status = 'paid';
+  reimb.paidAmount = paidAmount;
+  reimb.paidDate = paidDate;
+  reimb.paidNote = paidNote;
+  reimb.paidProofs = (window._pendingReimPaidProofs || []).slice();
+  reimb.processedAt = new Date().toISOString();
+
+  saveData();
+  closeDynamicModal('reimbursePayModal');
+  window._pendingReimPaidProofs = [];
+  renderFinance();
+  showToast('已确认打款，成本概览同步为已支付', 'success');
+}
+
+function viewReimPaidProofs(id) {
+  const reimb = financeData.reimbursements.find(r => r.id === id);
+  if (!reimb || !reimb.paidProofs || !reimb.paidProofs.length) return;
+  closeDynamicModal('reimPaidProofViewModal');
+  const imgs = reimb.paidProofs.map(p => '<img src="' + p + '" style="max-width:100%;border-radius:8px;border:1px solid var(--gray-200);margin-bottom:8px;" />').join('');
+  const html = '<div class="modal-overlay" id="reimPaidProofViewModal" style="display:flex;">' +
+    '<div class="modal" style="max-width:560px;">' +
+      '<div class="modal-header"><h3>打款凭证（' + reimb.paidProofs.length + '张）</h3>' +
+      '<button class="modal-close" onclick="closeDynamicModal(\'reimPaidProofViewModal\')">&times;</button></div>' +
+      '<div style="max-height:60vh;overflow:auto;">' + imgs + '</div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:12px;"><button class="btn btn-secondary" onclick="closeDynamicModal(\'reimPaidProofViewModal\')">关闭</button></div>' +
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
 function deleteReimburse(id) {
   if (!confirm('\u786E\u5B9A\u8981\u5220\u9664\u8FD9\u6761\u62A5\u9500\u8BB0\u5F55\u5417\uFF1F')) return;
   financeData.reimbursements = financeData.reimbursements.filter(r => r.id !== id);
@@ -4267,6 +4445,7 @@ function deleteReimburse(id) {
 function updateReimburseStatus(id, status) {
   const reimb = financeData.reimbursements.find(r => r.id === id);
   if (!reimb) return;
+  if (status === 'paid') { openReimbursePayModal(id); return; }
   const statusLabels = { approved: '\u6279\u51C6', rejected: '\u9A73\u56DE', paid: '\u6253\u6B3E' };
   if (!confirm('\u786E\u8BA4' + statusLabels[status] + '\u8FD9\u6761\u62A5\u9500\u5417\uFF1F')) return;
   reimb.status = status;
@@ -4355,7 +4534,7 @@ function exportFinanceReport() {
       if (quote <= 0 && cost <= 0) return;
       const cat = COST_CATEGORIES[getCostCategory(s.type)];
       const payment = financeData.payments[s.id] || { status: 'unpaid' };
-      const paymentLabels = { unpaid: '未付', partial: '部分付', paid: '已付' };
+      const paymentLabels = { unpaid: '未付', partial: '部分付', paid: '已支付' };
       const sName = (s.data && s.data.name) || s.name || getItemName(s);
       const sDate = (s.data && s.data.date) || s.date || getItemDate(s);
       const sSupplier = (s.data && s.data.supplier) || s.supplier || '';
