@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -183,6 +184,17 @@
   .badge-done { background: var(--success-light); color: var(--success); }
   .badge-primary { background: var(--primary-light); color: var(--primary); }
   .badge-gray { background: var(--gray-100); color: var(--gray-600); }
+
+  /* ===== Stage Badges (付款状态/审批状态) ===== */
+  .stage-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 500; white-space: nowrap;
+  }
+  .stage-success { background: var(--success-light); color: var(--success); }
+  .stage-warning { background: var(--warning-light); color: var(--warning); }
+  .stage-danger  { background: var(--danger-light);  color: var(--danger); }
+  .stage-new     { background: var(--gray-100);      color: var(--gray-600); }
 
   /* ===== Dashboard Stats ===== */
   .stats-grid {
@@ -689,7 +701,9 @@
     <div id="page-finance" class="page" style="display:none;">
       <div class="page-header">
         <h2>报账中心</h2>
-        <div class="actions">
+        <div class="actions" style="display:flex;gap:8px;align-items:center;">
+          <label style="font-size:13px;color:var(--gray-600);">月份：</label>
+          <select id="finMonthSelect" onchange="renderFinance()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--gray-200);font-size:13px;"></select>
           <button class="btn btn-secondary" onclick="exportFinanceReport()">📊 导出报表</button>
         </div>
       </div>
@@ -766,6 +780,7 @@
               <tr>
                 <th>团名</th>
                 <th>客户</th>
+                <th>落地执行时间</th>
                 <th>项目数</th>
                 <th>订单总额(¥)</th>
                 <th>成本总额(¥)</th>
@@ -838,6 +853,7 @@
                 <th>收款人</th>
                 <th>申请日期</th>
                 <th>报销金额</th>
+                <th>支付凭证</th>
                 <th>状态</th>
                 <th>操作</th>
               </tr>
@@ -1079,6 +1095,9 @@
         </div>
         <div class="service-type-btn" data-type="ticket" onclick="selectServiceType(this)">
           <span class="type-icon">&#127915;</span><span>门票</span>
+        </div>
+        <div class="service-type-btn" data-type="insurance" onclick="selectServiceType(this)">
+          <span class="type-icon">&#9937;</span><span>保险</span>
         </div>
         <div class="service-type-btn" data-type="meal" onclick="selectServiceType(this)">
           <span class="type-icon">&#127869;</span><span>餐厅</span>
@@ -1396,6 +1415,22 @@ const typeConfig = {
       { action: 'T-1 与餐厅最终确认', node: 'T-1' },
     ]
   },
+  insurance: {
+    icon: '&#9937;', label: '保险',
+    fields: [
+      { key: 'insuredCount', label: '被保人数' },
+      { key: 'insuredDays', label: '被保天数' },
+      { key: 'insuranceStart', label: '保险开始时间', type: 'date' },
+      { key: 'insuranceEnd', label: '保险结束时间', type: 'date' },
+      { key: 'insuranceAmount', label: '保价金额' },
+      { key: 'insuranceNotes', label: '备注', full: true },
+    ],
+    checklist: [
+      { action: '确认保险方案及保额', node: 'T-14' },
+      { action: '完成投保并获取保单号', node: 'T-7' },
+      { action: '发送保单信息给客户', node: 'T-3' },
+    ]
+  },
   other: {
     icon: '&#128230;', label: '其他',
     fields: [
@@ -1571,6 +1606,7 @@ function getItemName(item) {
     case 'guide': return (d.guideLanguage || '') + '导游 · ' + (d.guideCity || '');
     case 'ticket': return d.ticketName || '景点门票';
     case 'meal': return (d.mealName || '餐厅') + (d.mealCity ? ' · ' + d.mealCity : '');
+    case 'insurance': return '保险 ' + (d.insuredCount || '') + '人 ' + (d.insuredDays || '') + '天';
     case 'other': return d.otherName || '其他服务';
     default: return '服务项目';
   }
@@ -1578,7 +1614,7 @@ function getItemName(item) {
 
 function getItemDate(item) {
   const d = item.data;
-  const dateKeys = ['checkIn', 'trainDate', 'flightDate', 'carDate', 'guideStartDate', 'guideDate', 'ticketDate', 'mealDate', 'otherDate'];
+  const dateKeys = ['checkIn', 'trainDate', 'flightDate', 'carDate', 'guideStartDate', 'guideDate', 'ticketDate', 'mealDate', 'otherDate', 'insuranceStart'];
   for (const k of dateKeys) if (d[k]) return d[k];
   return '';
 }
@@ -1586,7 +1622,7 @@ function getItemDate(item) {
 function getItemDateRange(item) {
   const d = item.data;
   const s = getItemDate(item);
-  const endKeys = { guide: d.guideEndDate, hotel: d.checkOut };
+  const endKeys = { guide: d.guideEndDate, hotel: d.checkOut, insurance: d.insuranceEnd };
   const e = endKeys[item.type];
   if (s && e && e !== s) return s + ' ~ ' + e;
   return s;
@@ -1594,7 +1630,7 @@ function getItemDateRange(item) {
 
 function getItemAmount(item) {
   const d = item.data;
-  const amtKeys = ['hotelAmount', 'trainAmount', 'flightAmount', 'carAmount', 'guideAmount', 'ticketAmount', 'mealAmount', 'otherAmount'];
+  const amtKeys = ['hotelAmount', 'trainAmount', 'flightAmount', 'carAmount', 'guideAmount', 'ticketAmount', 'mealAmount', 'otherAmount', 'insuranceAmount'];
   for (const k of amtKeys) if (d[k]) return d[k];
   return '';
 }
@@ -1609,6 +1645,7 @@ function getItemDetail(item) {
     case 'guide': return `${d.guideDuration || ''} ${d.guideRoute || ''}`;
     case 'ticket': return `${d.ticketType || ''} ${d.ticketIncludes || ''}`;
     case 'meal': return `${d.mealType || ''} ${d.mealCount || ''}`;
+    case 'insurance': return (d.insuredCount || '') + '人 ' + (d.insuredDays || '') + '天';
     case 'other': return d.otherCount || '';
     default: return '';
   }
@@ -1956,13 +1993,15 @@ function renderUrgentTasks() {
   document.getElementById('urgentTasksList').innerHTML = `
     <table class="data-table">
       <thead><tr>
-        <th class="text-left">团</th><th class="text-left">服务项目</th><th>日期</th><th>距出团</th><th>状态</th><th>完成情况</th><th>操作</th>
+        <th class="text-left">团</th><th class="text-left">服务项目</th><th>日期</th><th>距出团</th><th>报价(¥)</th><th>成本(¥)</th><th>状态</th><th>完成情况</th><th>操作</th>
       </tr></thead>
       <tbody>
         ${filtered.map(r => {
           const t = r.tour, item = r.item;
           const days = getDaysToStart(t);
           const pr = getTodoPriority(t, item);
+          const quote = getItemQuote(item);
+          const cost = getItemCost(item);
           const doneBadge = item.status === 'done' ? '<span class="badge badge-done">已完成</span>' :
                             item.status === 'progress' ? '<span class="badge badge-progress">进行中</span>' :
                             '<span class="badge badge-pending">待预订</span>';
@@ -1971,6 +2010,8 @@ function renderUrgentTasks() {
             <td class="text-left">${item.typeIcon || ''} <strong>${esc(item.typeLabel || '')}</strong> · ${esc(getItemName(item))}<br><span style="font-size:11px;color:var(--gray-500);">${esc(getItemDetail(item))}</span></td>
             <td>${getItemDateRange(item) || '-'}</td>
             <td>${days !== null ? (days >= 0 ? days + ' 天' : '行程中') : '-'}</td>
+            <td style="font-weight:600;">${quote > 0 ? '¥' + quote.toLocaleString() : '-'}</td>
+            <td style="font-weight:600;">${cost > 0 ? '¥' + cost.toLocaleString() : '-'}</td>
             <td>
               <select onchange="setTaskPriority('${t.id}','${item.id}',this.value)" style="padding:2px 6px;font-size:11px;border-radius:4px;border:1px solid var(--gray-200);${PRIORITY_STYLES[pr]}">
                 <option value="紧急" ${pr==='紧急'?'selected':''}>紧急</option>
@@ -2506,8 +2547,8 @@ var CITY_DICT = ['北京','上海','广州','深圳','成都','重庆','杭州',
 function parseServiceList(text, year){
   var order = {
     name:'', year:year, adults:2, children:0, childHeight:'', type:'',
-    route:'', start:'', end:'', total:'', deposit:'', balance1:'', balance2:'', planner:'',
-    hotels:[], trains:[], tickets:[], services:[], meals:[], others:[], notes:''
+    route:'', start:'', end:'', total:'', cost:'', deposit:'', balance1:'', balance2:'', planner:'',
+    hotels:[], trains:[], tickets:[], services:[], meals:[], others:[], insurances:[], notes:''
   };
   var unmatched = [], warnings = [];
 
@@ -2517,14 +2558,83 @@ function parseServiceList(text, year){
   var nm = src.match(/(?:客户姓名\s*\/\s*群名\s*[|｜]?\s*例[:：]\s*|例[:：]\s*)([^\n|｜]+(?:[|｜]\d+人)?)/);
   if(!(nm && nm[1].trim())) nm = src.match(/【客户信息】\s*客户[:：]\s*([^\n]+?)(?=\s*(?:城市|服务日期|订单金额|【酒店)|$)/);
   if(nm && nm[1].trim()) order.name = nm[1].trim();
-  /* 单元格分隔符转换行：tab、|、｜、/ */
-  src = src.replace(/\r\n?/g, '\n').replace(/\t/g, '\n').replace(/\s*[|｜]\s*/g, '\n').replace(/\s*\/\s*/g, '\n');
+  /* 单元格分隔符转换行：tab→空格（保持字段名和值在同一行），|、｜→换行，/ →换行 */
+  src = src.replace(/\r\n?/g, '\n').replace(/\t/g, ' ').replace(/\s*[|｜]\s*/g, '\n');
   var lines = src.split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
 
   var curHotel = null, hotelMode = false, financeLine = [];
+  var curService = null, serviceMode = false, section = '';
+  function flushService(){
+    if(!curService) return;
+    var s = curService;
+    if(s._start){
+      var d0 = s._start, e0 = s._end || s._start, guard = 0;
+      while(d0 <= e0 && guard < 400){
+        order.services.push({date: d0, city: s.city, driver: s.driver, guide: s.guide, note: s.note, amount: s.amount});
+        if(d0 === e0) break;
+        d0 = addDaysISO(d0, 1); guard++;
+      }
+    } else if(s.city || s.driver || s.guide){
+      order.services.push({date: '', city: s.city, driver: s.driver, guide: s.guide, note: s.note, amount: s.amount});
+    }
+    curService = null;
+  }
 
   for(var i = 0; i < lines.length; i++){
     var ln = lines[i], handled = false;
+
+    /* ---- 区块标题（新版标准模板） ---- */
+    if(/^(?:\s|[\u2600-\u27BF]\uFE0F?|[\uD83C-\uD83E][\uDC00-\uDFFF]\uFE0F?)*[一二三四五六七八九十]+\s*[、.]/.test(ln) && ln.length < 30 && !/^一、基础信息/.test(ln)){
+      if(ln.indexOf('酒店') >= 0){ hotelMode = true; serviceMode = false; curHotel = null; flushService(); section = 'hotel'; }
+      else if(ln.indexOf('司导') >= 0 || ln.indexOf('包车') >= 0){ serviceMode = true; hotelMode = false; flushService(); section = 'service'; }
+      else if(ln.indexOf('保险') >= 0){ hotelMode = false; serviceMode = false; flushService(); section = 'insurance'; }
+      else if(ln.indexOf('餐厅') >= 0){ hotelMode = false; serviceMode = false; flushService(); section = 'dining'; }
+      else { hotelMode = false; serviceMode = false; flushService(); section = 'basic'; }
+      handled = true;
+    }
+
+    /* ---- 表格格式基础字段（新版标准模板：字段名：\t值） ---- */
+    if(!handled && /^客户名称[:：]\s*/.test(ln)){
+      var nmt = ln.replace(/^客户名称[:：]\s*/, '');
+      if(nmt) order.name = nmt.trim(); handled = true;
+    }
+    if(!handled && /^团队类型[:：]\s*/.test(ln)){
+      var tmt = ln.match(/(全托管|半托管|单接送|自由行)/);
+      if(tmt) order.type = tmt[1]; handled = true;
+    }
+    if(!handled && /^服务路线[:：]/.test(ln)){
+      var rtv = ln.replace(/^服务路线[:：]\s*/, '').trim();
+      order.route = rtv.split(/[,，、;；\s]+/).filter(function(p){ return p && /[\u4e00-\u9fa5A-Za-z]/.test(p); }).join(',');
+      handled = true;
+    }
+    if(!handled && /^出团日期[:：]/.test(ln)){
+      var stv = extractDates(ln, year);
+      if(stv.length) order.start = stv[0]; handled = true;
+    }
+    if(!handled && /^完团日期[:：]/.test(ln)){
+      var etv = extractDates(ln, year);
+      if(etv.length) order.end = etv[0]; handled = true;
+    }
+    if(!handled && /^订单总额[:：]/.test(ln)){
+      var otv = ln.match(/订单总额[:：]?\s*¥?\s*([\d.]+)/);
+      if(otv) order.total = otv[1]; handled = true;
+    }
+    if(!handled && /^成本总额[:：]/.test(ln)){
+      var ctv = ln.match(/成本总额[:：]?\s*¥?\s*([\d.]+)/);
+      if(ctv) order.cost = ctv[1]; handled = true;
+    }
+    if(!handled && /^成人人数[:：]/.test(ln)){
+      var amv = ln.match(/成人人数[:：]?\s*(\d+)/);
+      if(amv) order.adults = +amv[1]; handled = true;
+    }
+    if(!handled && /^儿童人数[:：]/.test(ln)){
+      var cmv = ln.match(/儿童人数[:：]?\s*(\d+)/);
+      if(cmv) order.children = +cmv[1]; handled = true;
+    }
+    if(!handled && /^儿童身高[:：]/.test(ln)){
+      var chv = ln.match(/儿童身高[:：]?\s*([0-9.]+[a-zA-Z]*)/);
+      if(chv) order.childHeight = chv[1]; handled = true;
+    }
 
     /* ---- 基础信息 ---- */
     if(/例[:：]/.test(ln) && !order.name){
@@ -2532,7 +2642,7 @@ function parseServiceList(text, year){
       if(nm2) order.name = nm2.trim();
       handled = true;
     }
-    if(/成人|儿童/.test(ln) && /\d/.test(ln) && !/项目[:：]/.test(ln) && !/日期[:：]/.test(ln) && !/张成人票|张儿童票/.test(ln)){
+    if(!handled && /成人|儿童/.test(ln) && /\d/.test(ln) && !/项目[:：]/.test(ln) && !/日期[:：]/.test(ln) && !/张成人票|张儿童票/.test(ln) && !/\d+成人\+/.test(ln) && !/成人\+\d+儿童/.test(ln)){
       var am = ln.match(/成人[:：]?\s*(\d+)\s*人?/);
       if(am) order.adults = +am[1];
       var cm2 = ln.match(/儿童[:：]?\s*(\d+)\s*人?\s*[（(]?\s*(?:身高[:：]?\s*)?([0-9.]+[a-zA-Z]*)/);
@@ -2540,41 +2650,41 @@ function parseServiceList(text, year){
       else { var cm = ln.match(/儿童[:：]?\s*(\d+)\s*人?/); if(cm) order.children = +cm[1]; }
       handled = true;
     }
-    if(/全托管|半托管|单接送|自由行/.test(ln) && ln.length < 30){
+    if(!handled && /全托管|半托管|单接送|自由行/.test(ln) && ln.length < 30){
       var tm = ln.match(/(全托管|半托管|单接送|自由行)/);
       order.type = tm[1]; handled = true;
     }
-    if(/服务城市|城市序列|途经城市/.test(ln) || (/^[\u4e00-\u9fa5\s–\-—→,，、]+$/.test(ln) && ln.indexOf('–') >= 0 && ln.length < 60)){
+    if(!handled && (/服务城市|城市序列|途经城市/.test(ln) || (/^[\u4e00-\u9fa5\s–\-—→,，、]+$/.test(ln) && ln.indexOf('–') >= 0 && ln.length < 60))){
       var seg = ln.replace(/^.*?[:：]\s*/, '');
       var parts = seg.split(/[–\-—→,，、\s]+/).filter(function(p){
         return p && /[\u4e00-\u9fa5]/.test(p) && !/\d/.test(p) && p.length <= 6 && CITY_DICT.indexOf(p.replace(/[（(].*?[)）]/g,'')) >= 0;
       });
       if(parts.length >= 2){ order.route = parts.join(','); handled = true; }
     }
-    if(/服务日期/.test(ln)){
+    if(!handled && /服务日期/.test(ln)){
       var ds = extractDates(ln, year);
       if(ds.length >= 1) order.start = ds[0];
       if(ds.length >= 2) order.end = ds[1];
       handled = true;
     }
-    if(/规划师|填写人|客服/.test(ln) && /[:：]/.test(ln)){
+    if(!handled && /规划师|填写人|客服/.test(ln) && /[:：]/.test(ln)){
       var pm = ln.match(/规划师[:：]\s*([^\s]+)/);
       if(pm) order.planner = pm[1];
       handled = true;
     }
 
     /* ---- 财务 ---- */
-    if(/总额|总金额/.test(ln)){
+    if(!handled && /总额|总金额/.test(ln) && !/^成本总额/.test(ln)){
       var t = ln.match(/总额[:：]?\s*¥?\s*([\d.]+)/) || ln.match(/总金额[:：]?\s*¥?\s*([\d.]+)/);
       if(t) order.total = t[1];
       handled = true;
     }
-    if(/定金/.test(ln)){
+    if(!handled && /定金/.test(ln)){
       var d = ln.match(/定金[:：]?\s*¥?\s*([\d.]+)/);
       if(d) order.deposit = d[1];
       handled = true;
     }
-    if(/尾款/.test(ln)){
+    if(!handled && /尾款/.test(ln)){
       var bl = ln.match(/尾款[:：]?\s*¥?\s*((?:[\d.]+(?:\s*\+\s*[\d.]+)?))/);
       if(bl){
         var nums = bl[1].match(/[\d.]+/g);
@@ -2593,10 +2703,10 @@ function parseServiceList(text, year){
     }
 
     /* ---- 酒店 ---- */
-    var isHotelLine = /酒店信息/.test(ln) || /酒店中文名[:：]|酒店英文名[:：]|酒店地址[:：]/.test(ln) || (hotelMode && (/^房型[:：]/.test(ln) || /^报价金额[:：]/.test(ln))) || /^[一二三四五六七八九十\d、.()（）\s]*城市[:：]/.test(ln);
+    var isHotelLine = /酒店信息/.test(ln) || /酒店中文名[:：]|酒店英文名[:：]|酒店地址[:：]/.test(ln) || (hotelMode && (/^(房型|房型\/间数)[:：]/.test(ln) || /^报价金额[:：]/.test(ln))) || /^[一二三四五六七八九十\d、.()（）\s]*城市[:：]/.test(ln);
     if(isHotelLine && !/服务城市/.test(ln)){
       hotelMode = true;
-      var keys = ln.split(/(?=城市[:：]|酒店英文名[:：]|酒店中文名[:：]|酒店地址[:：]|房型[:：]|报价金额[:：]|日期[:：])/);
+      var keys = ln.split(/(?=城市[:：]|酒店英文名[:：]|酒店中文名[:：]|酒店地址[:：]|(?:房型|房型\/间数)[:：]|报价金额[:：]|日期[:：])/);
       for(var k = 0; k < keys.length; k++){
         var kv = keys[k].trim();
         if(/城市[:：]/.test(kv)){
@@ -2609,8 +2719,8 @@ function parseServiceList(text, year){
           curHotel.en = kv.replace(/^.*?酒店英文名[:：]\s*/, '').trim();
         } else if(/酒店地址[:：]/.test(kv) && curHotel){
           curHotel.addr = kv.replace(/^.*?酒店地址[:：]\s*/, '').trim();
-        } else if(/房型[:：]/.test(kv) && curHotel){
-          curHotel.room = kv.replace(/^.*?房型[:：]\s*/, '').trim();
+        } else if(/(?:房型|房型\/间数)[:：]/.test(kv) && curHotel){
+          curHotel.room = kv.replace(/^.*?(?:房型|房型\/间数)[:：]\s*/, '').trim();
         } else if(/报价金额[:：]/.test(kv) && curHotel){
           var ham = kv.match(/([\d]+(?:\.[\d]+)?)/);
           if(ham) curHotel.amount = ham[1];
@@ -2627,6 +2737,25 @@ function parseServiceList(text, year){
       handled = true;
     }
 
+    /* 酒店表格格式字段行（新版标准模板：入住日期/退房日期/房型/间数 分行） */
+    if(!handled && hotelMode){
+      if(/^入住日期[:：]/.test(ln)){
+        if(!curHotel){ curHotel = {city:'', cn:'', en:'', addr:'', checkin:'', checkout:'', room:'', amount:'', note:''}; order.hotels.push(curHotel); }
+        var cim = extractDates(ln, year);
+        if(cim.length) curHotel.checkin = cim[0];
+        handled = true;
+      } else if(/^退房日期[:：]/.test(ln)){
+        if(!curHotel){ curHotel = {city:'', cn:'', en:'', addr:'', checkin:'', checkout:'', room:'', amount:'', note:''}; order.hotels.push(curHotel); }
+        var com = extractDates(ln, year);
+        if(com.length) curHotel.checkout = com[0];
+        handled = true;
+      } else if(/^(房型|房型\/间数)[:：]/.test(ln)){
+        if(!curHotel){ curHotel = {city:'', cn:'', en:'', addr:'', checkin:'', checkout:'', room:'', amount:'', note:''}; order.hotels.push(curHotel); }
+        curHotel.room = ln.replace(/^(房型|房型\/间数)[:：]\s*/, '').trim();
+        handled = true;
+      }
+    }
+
     /* 酒店日期区间行（与酒店名分行时，如「日期：8.5-8.7」单独一行） */
     if(!handled && curHotel){
       var hm2 = ln.match(/^日期[:：]?\s*(\d{1,2})[./\-](\d{1,2})\s*[-–—至~]\s*(\d{1,2})[./\-](\d{1,2})/);
@@ -2635,6 +2764,49 @@ function parseServiceList(text, year){
         var co2 = _iso(year, +hm2[3], +hm2[4]);
         if(+hm2[3] < +hm2[1]) co2 = _iso(year+1, +hm2[3], +hm2[4]);
         curHotel.checkin = ci2; curHotel.checkout = co2;
+        handled = true;
+      }
+    }
+
+    /* ---- 多列表格行（新版标准模板：类型\t项目名称\t日期\t数量\t报价金额\t备注） ---- */
+    if(!handled && /^类型\s*项目名称/.test(ln) && /报价金额/.test(ln)){ handled = true; }
+    if(!handled){
+      var trow = ln.match(/^(高铁票|高铁|机票|火车票|门票|餐厅|其他)\s+(.+)$/);
+      if(trow){
+        var rowType = trow[1], rowBody = trow[2].trim();
+        var rowDates = extractDates(rowBody, year);
+        var rowDate = rowDates.length ? rowDates[0] : '';
+        var rowAmt = rowBody.match(/¥\s*([\d.]+)/);
+        var rowNums = rowBody.match(/[\d]+(?:\.[\d]+)?/g);
+        var rowAmount = rowAmt ? rowAmt[1] : (rowNums && rowNums.length ? rowNums[rowNums.length-1] : '');
+        if(rowType === '高铁票' || rowType === '高铁' || rowType === '火车票' || rowType === '机票'){
+          var tr2 = {date: rowDate, no:'', from:'', to:'', dep:'', arr:'', seats:'', amount: rowAmount};
+          var tn3 = rowBody.match(/([GDKC])\s*(\d{1,4})/);
+          if(tn3) tr2.no = tn3[1] + tn3[2];
+          var seg3 = (tn3 ? rowBody.replace(/[GDKC]\s*\d{1,4}\s*/, ' ') : rowBody).replace(/\s+/g, ' ').trim();
+          var fm3 = seg3.match(/([\u4e00-\u9fa5A-Za-z]+?)\s*(?:→|->|—>|-->|至|到)\s*([\u4e00-\u9fa5A-Za-z]+)/);
+          if(fm3){ tr2.from = fm3[1]; tr2.to = fm3[2]; }
+          var tm3 = rowBody.match(/(\d{1,2})[:：](\d{2})\s*(?:[-–—~至]|->|→)\s*(\d{1,2})[:：](\d{2})/);
+          if(tm3){ tr2.dep = tm3[1] + ':' + tm3[2]; tr2.arr = tm3[3] + ':' + tm3[4]; }
+          var sm5 = rowBody.match(/(\d+成人\+\d+儿童|\d+\s*张成人票[\s,，]*\d+\s*张儿童票|\d+\s*张成人票|\d+\s*张)/);
+          if(sm5) tr2.seats = sm5[1];
+          order.trains.push(tr2);
+        } else if(rowType === '门票'){
+          var tk3 = {date: rowDate, name:'', detail:'', count:'', amount: rowAmount};
+          var b3 = rowBody.replace(/¥\s*[\d.]+\s*$/, '').trim();
+          var cm4 = b3.match(/[（(]([^（）()]*)[）)]/);
+          var ctm4 = b3.match(/(\d+\s*张成人票[\s,，]*\d+\s*张儿童票|\d+\s*张成人票|\d+\s*张)/);
+          if(ctm4) tk3.count = ctm4[1];
+          tk3.name = b3.replace(/[（(][^（）()]*[）)]/g, '').replace(/(\d+\s*张成人票[\s,，]*\d+\s*张儿童票|\d+\s*张成人票|\d+\s*张)/g, '').replace(/门票/g, '').replace(/\d{1,2}[.\/-]\d{1,2}/, '').replace(/\s+/g,' ').trim();
+          if(cm4 && !tk3.name) tk3.name = cm4[1].trim();
+          if(!tk3.name) tk3.name = '门票';
+          order.tickets.push(tk3);
+        } else {
+          var it6 = {date: rowDate, name:'', amount: rowAmount};
+          var b6 = rowBody.replace(/¥\s*[\d.]+\s*$/, '').replace(/^[\d]{1,2}[.\/\-][\d]{1,2}\s*/, '').replace(/\d{1,2}[.\/-]\d{1,2}/, '').replace(/\d+\s*人\s*$/, '').replace(/\s*\d+\s*$/, '').replace(/\s+/g, ' ').trim();
+          it6.name = b6;
+          if(rowType === '餐厅') order.meals.push(it6); else order.others.push(it6);
+        }
         handled = true;
       }
     }
@@ -2688,6 +2860,51 @@ function parseServiceList(text, year){
       handled = true;
     }
 
+    /* ---- 司导与包车（表格格式：服务城市/开始日期/结束日期/类型/语种/路线/报价/备注 分行） ---- */
+    if(!handled && serviceMode){
+      if(/^服务城市[:：]/.test(ln)){
+        flushService();
+        var sct = ln.replace(/^服务城市[:：]\s*/, '').match(/[\u4e00-\u9fa5A-Za-z·]+/);
+        curService = {date:'', city: sct ? sct[0] : '', driver:'', guide:'', note:'', amount:'', _start:'', _end:''};
+        handled = true;
+      } else if(/^服务开始日期[:：]/.test(ln)){
+        if(!curService) curService = {date:'', city:'', driver:'', guide:'', note:'', amount:'', _start:'', _end:''};
+        var ssd = extractDates(ln, year);
+        if(ssd.length) curService._start = ssd[0];
+        handled = true;
+      } else if(/^服务结束日期[:：]/.test(ln)){
+        if(!curService) curService = {date:'', city:'', driver:'', guide:'', note:'', amount:'', _start:'', _end:''};
+        var sed = extractDates(ln, year);
+        if(sed.length) curService._end = sed[0];
+        handled = true;
+      } else if(/^服务类型[:：]/.test(ln)){
+        if(!curService) curService = {date:'', city:'', driver:'', guide:'', note:'', amount:'', _start:'', _end:''};
+        var sty = ln.replace(/^服务类型[:：]\s*/, '').trim();
+        curService.driver = sty && sty !== '无' ? sty : '';
+        handled = true;
+      } else if(/^语种[:：]/.test(ln)){
+        if(!curService) curService = {date:'', city:'', driver:'', guide:'', note:'', amount:'', _start:'', _end:''};
+        var slg = ln.replace(/^语种[:：]\s*/, '').trim();
+        if(slg && slg !== '无') curService.guide = slg;
+        handled = true;
+      } else if(/^(路线\/建议行程|建议行程|路线)[:：]/.test(ln)){
+        if(!curService) curService = {date:'', city:'', driver:'', guide:'', note:'', amount:'', _start:'', _end:''};
+        var srt = ln.replace(/^(路线\/建议行程|建议行程|路线)[:：]\s*/, '').trim();
+        if(srt && srt !== '无') curService.note = (curService.note ? curService.note + ' ' : '') + srt;
+        handled = true;
+      } else if(/^报价金额[:：]/.test(ln)){
+        if(!curService) curService = {date:'', city:'', driver:'', guide:'', note:'', amount:'', _start:'', _end:''};
+        var sam = ln.match(/报价金额[:：]?\s*¥?\s*([\d.]+)/);
+        if(sam) curService.amount = sam[1];
+        handled = true;
+      } else if(/^备注[:：]/.test(ln)){
+        if(!curService) curService = {date:'', city:'', driver:'', guide:'', note:'', amount:'', _start:'', _end:''};
+        var sn = ln.replace(/^备注[:：]\s*/, '').trim();
+        if(sn && sn !== '无') curService.note = (curService.note ? curService.note + ' ' : '') + sn;
+        handled = true;
+      }
+    }
+
     /* ---- 每日服务（司机 / 导游 / 门票） ---- */
     if(!handled && /司机|导游|用车|包车|接机|送机/.test(ln) && /日期|路线/.test(ln)){
       var day = { date:'', city:'', driver:'', guide:'', ticketRaw:'', note:'' };
@@ -2726,6 +2943,57 @@ function parseServiceList(text, year){
       handled = true;
     }
 
+    /* ---- 保险（表格格式：被保人数/被保天数/开始/结束/保价金额 分行） ---- */
+    if(!handled && /^被保人数[:：]/.test(ln)){
+      if(!order.insurances.length) order.insurances.push({count:'', days:'', start:'', end:'', amount:'', note:''});
+      var icn = ln.match(/被保人数[:：]?\s*(\d+)/);
+      if(icn) order.insurances[order.insurances.length-1].count = icn[1];
+      handled = true;
+    }
+    if(!handled && /^被保天数[:：]/.test(ln)){
+      if(!order.insurances.length) order.insurances.push({count:'', days:'', start:'', end:'', amount:'', note:''});
+      var idy = ln.match(/被保天数[:：]?\s*(\d+)/);
+      if(idy) order.insurances[order.insurances.length-1].days = idy[1];
+      handled = true;
+    }
+    if(!handled && /^保险开始时间[:：]/.test(ln)){
+      if(!order.insurances.length) order.insurances.push({count:'', days:'', start:'', end:'', amount:'', note:''});
+      var ist = extractDates(ln, year);
+      if(ist.length) order.insurances[order.insurances.length-1].start = ist[0];
+      handled = true;
+    }
+    if(!handled && /^保险结束时间[:：]/.test(ln)){
+      if(!order.insurances.length) order.insurances.push({count:'', days:'', start:'', end:'', amount:'', note:''});
+      var iet = extractDates(ln, year);
+      if(iet.length) order.insurances[order.insurances.length-1].end = iet[0];
+      handled = true;
+    }
+    if(!handled && /^保价金额[:：]/.test(ln)){
+      if(!order.insurances.length) order.insurances.push({count:'', days:'', start:'', end:'', amount:'', note:''});
+      var iam3 = ln.match(/保价金额[:：]?\s*¥?\s*([\d.]+)/);
+      if(iam3) order.insurances[order.insurances.length-1].amount = iam3[1];
+      handled = true;
+    }
+
+    /* ---- 保险（模板标准行：保险：3人 7天 8.20-8.26 ¥210） ---- */
+    if(!handled && /^保险[:：]/.test(ln)){
+      var ibody = ln.replace(/^保险[:：]\s*/, '');
+      var idates = extractDates(ibody, year);
+      var ipcount = ibody.match(/(\d+)\s*人/);
+      var ipdays = ibody.match(/(\d+)\s*天/);
+      var iamt = ibody.match(/¥\s*([\d.]+)/);
+      var idateRange = ibody.match(/(\d{1,2}[.\-/]\d{1,2})(?:[\s\-~至]+)(\d{1,2}[.\-/]\d{1,2})/);
+      var insItem = {
+        count: ipcount ? ipcount[1] : '',
+        days: ipdays ? ipdays[1] : '',
+        start: idates.length ? idates[0] : (idateRange ? idateRange[1] : ''),
+        end: idates.length > 1 ? idates[1] : (idateRange ? idateRange[2] : ''),
+        amount: iamt ? iamt[1] : ''
+      };
+      order.insurances.push(insItem);
+      handled = true;
+    }
+
     /* ---- 餐厅 / 其他（模板标准行：餐厅：8月7日 晚餐 xxx 3人 ¥450） ---- */
     if(!handled && /^(餐厅|其他)[:：]/.test(ln)){
       var isMeal = ln.charAt(0) === '餐';
@@ -2737,6 +3005,18 @@ function parseServiceList(text, year){
       var nm5 = body5.replace(/^[\d]{4}年[\d]{1,2}月[\d]{1,2}日\s*/, '').replace(/^[\d]{1,2}月[\d]{1,2}日\s*/, '').replace(/^[\d]{1,2}[.\/\-][\d]{1,2}(?:[.\/\-][\d]{2,4})?\s*/, '').replace(/¥\s*[\d.]+\s*$/, '').trim();
       var item5 = { date: d5.length ? d5[0] : '', name: nm5, amount: amt5 };
       if(isMeal) order.meals.push(item5); else order.others.push(item5);
+      handled = true;
+    }
+
+    /* ---- 备注（表格格式，按区块归属） ---- */
+    if(!handled && /^备注[:：]/.test(ln)){
+      if(section === 'insurance'){
+        if(!order.insurances.length) order.insurances.push({count:'', days:'', start:'', end:'', amount:'', note:''});
+        order.insurances[order.insurances.length-1].note = ln.replace(/^备注[:：]\s*/, '').trim();
+      } else if(section === 'hotel' && curHotel){
+        var hv = ln.replace(/^备注[:：]\s*/, '').trim();
+        if(hv && hv !== '无') curHotel.note = hv;
+      }
       handled = true;
     }
 
@@ -2756,6 +3036,7 @@ function parseServiceList(text, year){
        && !/^客户姓名|^群名|WhatsApp|^客户人数|^客户类型|^服务城市|^服务清单填写人|^下游对接群/.test(ln)
        && !/^[一二三四五六七八九十]+[、.）)]?\s*$/.test(ln) && !/^[一二三四五六七八九十]+、/.test(ln) && !/^※/.test(ln) && !/^📌/.test(ln) && !/服\s*务\s*清\s*单（标准模板）/.test(ln) && ln !== '无' && ln !== '项目') unmatched.push(ln);
   }
+  flushService();
 
   /* ---- 酒店日期与行程起止的推断 ---- */
   if(order.hotels.length){
@@ -2992,6 +3273,9 @@ function parsedToServiceItems(o) {
   (o.meals || []).forEach(function(m) {
     push('meal', { mealName: m.name || '', mealCity: '', mealDate: m.date || '', mealType: '', mealCount: '', mealAmount: m.amount || '', mealNotes: '' });
   });
+  (o.insurances || []).forEach(function(m) {
+    push('insurance', { insuredCount: m.count || '', insuredDays: m.days || '', insuranceStart: m.start || '', insuranceEnd: m.end || '', insuranceAmount: m.amount || '', insuranceNotes: '' });
+  });
   (o.others || []).forEach(function(m) {
     push('other', { otherName: m.name || '', otherDate: m.date || '', otherCount: '', otherAmount: m.amount || '', otherNotes: '' });
   });
@@ -3077,6 +3361,11 @@ function getTourRevenue(tourId) {
 }
 
 function getMonthRange() {
+  const sel = document.getElementById('finMonthSelect');
+  if (sel && sel.value) {
+    const [y, m] = sel.value.split('-').map(Number);
+    return { start: new Date(y, m - 1, 1), end: new Date(y, m, 0, 23, 59, 59) };
+  }
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -3099,6 +3388,7 @@ const COST_CATEGORIES = {
   guide:     { label: '导游', types: ['guide'],                   color: '#BA7517', icon: '\u{1F464}' },
   ticket:    { label: '门票', types: ['ticket'],                  color: '#A32D2D', icon: '\u{1F3AB}' },
   meal:      { label: '餐饮', types: ['meal'],                    color: '#8B5CF6', icon: '\u{1F37D}\u{FE0F}' },
+  insurance: { label: '保险', types: ['insurance'],                  color: '#10B981', icon: '\u{1F4DE}' },
   other:     { label: '其他', types: ['other', 'info'],            color: '#06B6D4', icon: '\u{1F4E6}' }
 };
 
@@ -3130,6 +3420,7 @@ function setPayMode(serviceId, mode) {
 
 // 报销类别（对个人服务项的类型映射）
 const REIM_CATEGORY_LABELS = {
+  insurance: { label: '保险', icon: '⛑️' },
   guide: { label: '导游', icon: '🧑‍💼' },
   car: { label: '车队/司机', icon: '🚗' },
   meal: { label: '餐饮', icon: '🍽️' },
@@ -3152,20 +3443,36 @@ function renderFinance() {
   if (!financeData.payments) financeData.payments = {};
   if (!financeData.reimbursements) financeData.reimbursements = [];
 
-  const range = getMonthRange();
+  // 初始化月份选择器
+  const sel = document.getElementById('finMonthSelect');
+  if (sel && !sel.options.length) {
+    const now = new Date();
+    let opts = '';
+    // 生成过去12个月 + 当前月
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      const label = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+      opts += '<option value="' + val + '"' + (i === 0 ? ' selected' : '') + '>' + label + '</option>';
+    }
+    sel.innerHTML = opts;
+  }
 
-  // 本月营收
+  const range = getMonthRange();
+  const monthLabel = (range.start.getMonth() + 1) + '月';
+
+  // 当月营收
   const monthRevenues = financeData.revenues.filter(r => isInMonth(r.date, range));
   const monthRevenue = monthRevenues.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
-  // 本月成本
+  // 当月成本（落地执行时间在选中月份的团）
   const monthTours = tours.filter(t => isInMonth(t.startDate, range) || isInMonth(t.endDate, range));
   const monthCost = monthTours.reduce((s, t) => s + getServiceCost(t), 0);
 
   const monthProfit = monthRevenue - monthCost;
   const profitRate = monthRevenue > 0 ? (monthProfit / monthRevenue * 100) : 0;
 
-  // 待付供应商（按成本金额）
+  // 待付供应商（按成本金额，全局不受月份限制）
   let pendingPay = 0, pendingCount = 0;
   tours.forEach(t => {
     getTourServices(t).forEach(s => {
@@ -3181,10 +3488,15 @@ function renderFinance() {
     });
   });
 
+  // 更新标签文字（动态显示选中月份）
+  document.querySelector('#page-finance .stat-card.stat-success .label').textContent = monthLabel + '营收';
+  document.querySelector('#page-finance .stat-card.stat-warning .label').textContent = monthLabel + '成本';
+  document.querySelector('#page-finance .stat-card.stat-primary .label').textContent = monthLabel + '毛利';
+
   document.getElementById('finMonthRevenue').textContent = '\u00A5' + monthRevenue.toLocaleString();
   document.getElementById('finMonthRevenueSub').textContent = monthRevenues.length + ' \u7B14\u6536\u6B3E';
   document.getElementById('finMonthCost').textContent = '\u00A5' + monthCost.toLocaleString();
-  document.getElementById('finMonthCostSub').textContent = monthTours.length + ' \u4E2A\u56E2';
+  document.getElementById('finMonthCostSub').textContent = monthTours.length + ' \u4E2A\u56E2\uFF08\u843D\u5730\u6267\u884C\u65F6\u95F4\u5728' + monthLabel + '\uFF09';
   document.getElementById('finMonthProfit').textContent = (monthProfit >= 0 ? '\u00A5' : '-\u00A5') + Math.abs(monthProfit).toLocaleString();
   document.getElementById('finMonthProfitSub').textContent = '\u6BDB\u5229\u7387 ' + profitRate.toFixed(1) + '%';
   document.getElementById('finMonthProfit').style.color = monthProfit >= 0 ? 'var(--success)' : 'var(--danger)';
@@ -3344,7 +3656,7 @@ function renderTourProfit() {
 
   let html = '';
   if (rows.length === 0) {
-    html = '<tr><td colspan="9" style="text-align:center;color:var(--gray-400);padding:24px;">暂无数据。请在「团组信息」填写订单总额/成本总额，或在执行清单中填写成本金额。</td></tr>';
+    html = '<tr><td colspan="10" style="text-align:center;color:var(--gray-400);padding:24px;">暂无数据。请在「团组信息」填写订单总额/成本总额，或在执行清单中填写成本金额。</td></tr>';
   } else {
     rows.forEach(r => {
       const profitColor = r.profit >= 0 ? 'var(--success)' : 'var(--danger)';
@@ -3353,6 +3665,7 @@ function renderTourProfit() {
       html += '<tr>' +
         '<td class="text-left"><strong>' + tourDisplayName(r.tour) + '</strong></td>' +
         '<td>' + tourClientName(r.tour) + '</td>' +
+        '<td style="font-size:12px;">' + (r.tour.startDate || '-') + (r.tour.endDate ? ' ~ ' + r.tour.endDate : '') + '</td>' +
         '<td>' + r.items.length + (costMissing ? ' <span style="color:var(--danger);font-size:11px;">(' + costMissing + '项未填成本)</span>' : '') + '</td>' +
         '<td style="font-weight:600;">¥' + r.orderTotal.toLocaleString() + '</td>' +
         '<td>¥' + r.budgetCost.toLocaleString() + (overBudget ? ' <span style="color:var(--danger);font-size:11px;">超支</span>' : '') + '</td>' +
@@ -3367,7 +3680,7 @@ function renderTourProfit() {
     const ta = rows.reduce((a, b) => a + b.actualCost, 0);
     const tp = to - ta;
     html += '<tr style="background:var(--gray-50);font-weight:600;">' +
-      '<td colspan="3" style="text-align:right;">合计：</td>' +
+      '<td colspan="4" style="text-align:right;">合计：</td>' +
       '<td>¥' + to.toLocaleString() + '</td>' +
       '<td>¥' + tb.toLocaleString() + '</td>' +
       '<td>¥' + ta.toLocaleString() + '</td>' +
@@ -3716,7 +4029,7 @@ function renderFinanceReimburse() {
   const reimbursements = (financeData.reimbursements || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   let html = '';
   if (reimbursements.length === 0) {
-    html = '<tr><td colspan="9" style="text-align:center;color:var(--gray-400);padding:24px;">暂无报销记录。对个人支出（导游/车队/地接社）点击右上角「申请报销」，对公支出由财务对账。</td></tr>';
+    html = '<tr><td colspan="10" style="text-align:center;color:var(--gray-400);padding:24px;">暂无报销记录。对个人支出（导游/车队/地接社）点击右上角「申请报销」，对公支出由财务对账。</td></tr>';
   } else {
     const statusLabels = { pending: '待审批', approved: '已批准', rejected: '已驳回', paid: '已打款' };
     const statusColors = { pending: 'warning', approved: 'success', rejected: 'danger', paid: 'success' };
@@ -3731,6 +4044,7 @@ function renderFinanceReimburse() {
         '<td>' + (r.payee || '-') + '</td>' +
         '<td>' + (r.applyDate || '-') + '</td>' +
         '<td style="font-weight:600;">¥' + (parseFloat(r.amount) || 0).toLocaleString() + '</td>' +
+        '<td>' + ((r.proofs && r.proofs.length) ? '<button class="btn btn-ghost btn-sm" title="查看支付凭证" onclick="viewReimProofs(\'' + r.id + '\')">📎' + r.proofs.length + '</button>' : '<span style="color:var(--gray-400);font-size:11px;">无</span>') + '</td>' +
         '<td><span class="stage-badge stage-' + (statusColors[r.status] || 'new') + '">' + (statusLabels[r.status] || r.status) + '</span></td>' +
         '<td style="display:flex;gap:4px;flex-wrap:wrap;">' +
           (r.status === 'pending' ? '<button class="btn btn-sm btn-success" onclick="updateReimburseStatus(\'' + r.id + '\', \'approved\')">批准</button><button class="btn btn-sm btn-danger" onclick="updateReimburseStatus(\'' + r.id + '\', \'rejected\')">驳回</button>' : '') +
@@ -3774,7 +4088,14 @@ function openReimburseModal() {
       '</div>' +
       '<div class="form-group">' +
         '<label>报销金额 (¥) <span style="color:var(--danger);">*</span></label>' +
-        '<input type="number" id="reimAmount" class="form-control" placeholder="自动按选中项目汇总" step="0.01">' +
+        '<input type="number" id="reimAmount" class="form-control" placeholder="请手动输入报销金额" step="0.01">' +
+        '<div style="font-size:11px;color:var(--gray-400);margin-top:4px;">参考汇总：<span id="reimAmountHint">选择团后显示</span></div>' +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>支付凭证（上传截图，可多选）</label>' +
+        '<input type="file" id="reimProofInput" accept="image/*" multiple class="form-control" onchange="handleReimProofFiles(this.files)" />' +
+        '<div id="reimProofPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>' +
+        '<div style="font-size:11px;color:var(--gray-400);margin-top:4px;">支持 jpg/png，单张 ≤1.5MB，最多 6 张。</div>' +
       '</div>' +
       '<div class="form-group">' +
         '<label>备注</label>' +
@@ -3787,6 +4108,8 @@ function openReimburseModal() {
     '</div>' +
   '</div>';
   document.body.insertAdjacentHTML('beforeend', html);
+  window._pendingReimProofs = [];
+  renderReimProofPreview();
 }
 
 function updateReimbursePreview() {
@@ -3842,8 +4165,9 @@ function updateReimburseAmount() {
     total += getItemCost(s);
     if (!payee) payee = (s.data && s.data.payee) || s.supplier || '';
   });
-  const amountInput = document.getElementById('reimAmount');
-  if (amountInput) amountInput.value = total > 0 ? total : '';
+  // 只更新提示，不覆盖手动输入的金额
+  const hint = document.getElementById('reimAmountHint');
+  if (hint) hint.textContent = total > 0 ? '¥' + total.toLocaleString() + '（参考，可手动修改）' : '暂无可参考的成本数据';
   const payeeInput = document.getElementById('reimPayee');
   if (payeeInput && payee && !payeeInput.value) payeeInput.value = payee;
 }
@@ -3875,6 +4199,7 @@ function saveReimburse() {
     tourId, applicant, payee, amount, note,
     items: selectedIds,
     categories, itemNames,
+    proofs: window._pendingReimProofs || [],
     applyDate: now.toISOString().slice(0, 10),
     status: 'pending',
     createdAt: now.toISOString()
@@ -3882,8 +4207,53 @@ function saveReimburse() {
   financeData.reimbursements.push(reimb);
   saveData();
   closeDynamicModal('reimburseModal');
+  window._pendingReimProofs = [];
   renderFinance();
   showToast('报销申请已提交，待财务审批', 'success');
+}
+
+// ===== 报销支付凭证上传 =====
+function renderReimProofPreview() {
+  const box = document.getElementById('reimProofPreview');
+  if (!box) return;
+  box.innerHTML = (window._pendingReimProofs || []).map((p, i) =>
+    '<div style="position:relative;">' +
+    '<img src="' + p + '" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--gray-200);cursor:pointer;" onclick="window.open(\'' + p + '\')" />' +
+    '<button class="btn btn-ghost btn-sm" style="position:absolute;top:-6px;right:-6px;padding:0 5px;background:var(--danger);color:#fff;border-radius:50%;line-height:1.2;" onclick="removeReimProof(' + i + ')">&times;</button>' +
+    '</div>').join('') || '<span style="font-size:12px;color:var(--gray-400);">尚未上传凭证</span>';
+}
+
+function handleReimProofFiles(files) {
+  if (!files || !files.length) return;
+  Array.from(files).forEach(f => {
+    if (!/^image\//.test(f.type)) { showToast('请选择图片文件', 'warning'); return; }
+    if (f.size > 1.5 * 1024 * 1024) { showToast('「' + f.name + '」超过1.5MB，已跳过', 'warning'); return; }
+    if ((window._pendingReimProofs || []).length >= 6) { showToast('最多6张凭证', 'warning'); return; }
+    const reader = new FileReader();
+    reader.onload = e => { window._pendingReimProofs.push(e.target.result); renderReimProofPreview(); };
+    reader.readAsDataURL(f);
+  });
+  document.getElementById('reimProofInput').value = '';
+}
+
+function removeReimProof(i) {
+  window._pendingReimProofs.splice(i, 1);
+  renderReimProofPreview();
+}
+
+function viewReimProofs(id) {
+  const reimb = financeData.reimbursements.find(r => r.id === id);
+  if (!reimb || !reimb.proofs || !reimb.proofs.length) return;
+  closeDynamicModal('reimProofModal');
+  let imgs = reimb.proofs.map(p => '<img src="' + p + '" style="max-width:100%;border-radius:8px;margin-bottom:8px;cursor:pointer;" onclick="window.open(\'' + p + '\')" />').join('');
+  const html = '<div class="modal-overlay" id="reimProofModal" style="display:flex;">' +
+    '<div class="modal" style="max-width:600px;">' +
+      '<div class="modal-header"><h3>支付凭证（' + reimb.proofs.length + '张）</h3>' +
+      '<button class="modal-close" onclick="closeDynamicModal(\'reimProofModal\')">&times;</button></div>' +
+      '<div>' + imgs + '</div>' +
+    '</div>' +
+  '</div>';
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
 function deleteReimburse(id) {
